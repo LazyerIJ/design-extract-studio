@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="localhost에서 실제 designlang 추출 작업을 실행하고 검증하는 Design Extract Studio"
+    >
+    <title>Design Extract Studio</title>
+    <link
+      rel="icon"
+      href="/source-assets/designlang-app-logo.svg"
+      type="image/svg+xml"
+    >
+    <link
+      rel="stylesheet"
+      href="/source-assets/designlang-app-reset.css"
+    >
+    <link
+      rel="stylesheet"
+      href="/source-assets/designlang-app-variables.css"
+    >
+    <link
+      rel="stylesheet"
+      href="/source-assets/designlang-app-motion.css"
+    >
+    <link rel="stylesheet" href="/app.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+
+    <header class="site-header">
+      <nav class="shell nav-bar" aria-label="주요 탐색">
+        <a class="brand" href="#top" aria-label="Design Extract Studio 홈">
+          <img
+            class="brand__logo"
+            src="/source-assets/designlang-app-logo.svg"
+            width="32"
+            height="32"
+            alt=""
+          >
+          <span>Design Extract Studio</span>
+        </a>
+        <div class="nav-bar__links">
+          <a href="#extract">Extract</a>
+          <a href="#workspace">Jobs</a>
+          <a href="#artifact-panel">Artifacts</a>
+        </div>
+        <span id="server-status" class="status-pill" role="status">
+          <span class="status-dot" aria-hidden="true"></span>
+          Connecting
+        </span>
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <section id="top" class="hero shell" aria-labelledby="hero-title">
+        <div class="hero__content mo-slide-up">
+          <p class="eyebrow">Local extraction operations</p>
+          <h1 id="hero-title">Run a real design extraction.</h1>
+          <p class="hero__lede">
+            URL과 옵션을 입력하면 localhost 서버가 system Chrome으로
+            designlang을 실행하고 로그, 검증 결과, 요약, 산출물을 한곳에
+            보관합니다.
+          </p>
+
+          <form id="extract-form" class="extract-form card" novalidate>
+            <div class="form-heading">
+              <div>
+                <p class="eyebrow">New extraction</p>
+                <h2>Choose a source and options.</h2>
+              </div>
+              <span class="count-badge">FIFO · 1 worker</span>
+            </div>
+
+            <label for="site-url">웹사이트 URL</label>
+            <div class="extract-form__controls">
+              <input
+                id="site-url"
+                name="url"
+                type="url"
+                value="https://designlang.app"
+                placeholder="https://example.com"
+                autocomplete="url"
+                inputmode="url"
+                maxlength="2048"
+                required
+                aria-describedby="url-help form-status"
+              >
+              <button
+                id="submit-job"
+                class="button"
+                data-variant="primary"
+                type="submit"
+              >
+                Run extraction
+              </button>
+            </div>
+
+            <fieldset class="option-panel">
+              <legend>Extraction options</legend>
+              <label class="check-control">
+                <input id="option-dark" name="dark" type="checkbox" checked>
+                <span>Dark mode</span>
+              </label>
+              <label class="check-control">
+                <input
+                  id="option-screenshots"
+                  name="screenshots"
+                  type="checkbox"
+                  checked
+                >
+                <span>Component screenshots</span>
+              </label>
+              <label class="number-control" for="option-depth">
+                <span>Crawl depth</span>
+                <input
+                  id="option-depth"
+                  name="depth"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="1"
+                  value="1"
+                >
+              </label>
+              <label class="number-control" for="option-wait">
+                <span>SPA wait (ms)</span>
+                <input
+                  id="option-wait"
+                  name="wait"
+                  type="number"
+                  min="0"
+                  max="30000"
+                  step="100"
+                  value="1500"
+                >
+              </label>
+            </fieldset>
+
+            <p id="url-help" class="field-help">
+              첫 실행은 npx 캐시와 Chrome 준비 때문에 느릴 수 있습니다.
+              postinstall은 비활성화되고 system Chrome을 사용합니다.
+            </p>
+            <p id="form-status" class="sr-only" aria-live="polite"></p>
+          </form>
+        </div>
+
+        <aside class="hero__score card mo-scale-in" aria-labelledby="service-title">
+          <div class="card__header">
+            <div>
+              <p class="eyebrow">Worker status</p>
+              <h2 id="service-title">Extraction service</h2>
+            </div>
+            <span id="health-badge" class="grade-badge" aria-label="서버 상태">
+              …
+            </span>
+          </div>
+          <p id="health-message">localhost API에 연결하는 중입니다.</p>
+          <dl class="score-facts service-facts">
+            <div><dt>Running</dt><dd id="health-running">—</dd></div>
+            <div><dt>Queued</dt><dd id="health-queued">—</dd></div>
+            <div><dt>Codex</dt><dd id="health-codex">Off</dd></div>
+          </dl>
+          <div class="command-note">
+            <code>npx --yes designlang … --system-chrome --quiet</code>
+            <p>입력은 shell 문자열이 아니라 안전한 argument 배열로 전달됩니다.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section id="workspace" class="section shell" aria-labelledby="workspace-title">
+        <div class="section__heading">
+          <div>
+            <p class="eyebrow">Extraction history</p>
+            <h2 id="workspace-title">Jobs and artifacts</h2>
+          </div>
+          <p>상태, 실시간 로그, 검증 결과와 생성 파일을 확인하세요.</p>
+        </div>
+
+        <div class="workspace-layout">
+          <aside class="jobs-panel card" aria-labelledby="jobs-title">
+            <div class="jobs-panel__header">
+              <div>
+                <p class="eyebrow">History</p>
+                <h3 id="jobs-title">Extraction jobs</h3>
+              </div>
+              <button
+                id="refresh-jobs"
+                class="icon-button"
+                type="button"
+                aria-label="작업 목록 새로고침"
+                title="Refresh jobs"
+              >
+                ↻
+              </button>
+            </div>
+            <label class="filter-control" for="status-filter">
+              <span>상태 필터</span>
+              <select id="status-filter">
+                <option value="">All jobs</option>
+                <option value="queued">Queued</option>
+                <option value="running">Running</option>
+                <option value="succeeded">Succeeded</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </label>
+            <div id="jobs-loading" class="loading-state" role="status">
+              작업 이력을 불러오는 중입니다.
+            </div>
+            <div id="jobs-empty" class="empty-state" hidden>
+              <strong>No extractions yet.</strong>
+              <p>위 폼에서 첫 작업을 실행하세요.</p>
+            </div>
+            <ol id="job-list" class="job-list" aria-label="추출 작업 목록"></ol>
+          </aside>
+
+          <section class="job-detail" aria-live="polite">
+            <div id="detail-empty" class="empty-state card detail-empty">
+              <img
+                src="/source-assets/designlang-app-logo.svg"
+                width="48"
+                height="48"
+                alt=""
+              >
+              <strong>Select a job.</strong>
+              <p>작업을 선택하면 진행 로그와 산출물이 여기에 표시됩니다.</p>
+            </div>
+
+            <div id="detail-content" hidden>
+              <article class="detail-header card">
+                <div class="detail-header__copy">
+                  <div class="detail-heading-row">
+                    <span id="detail-status" class="status-label">Queued</span>
+                    <span id="detail-id" class="mono-meta"></span>
+                  </div>
+                  <h3 id="detail-host">—</h3>
+                  <a
+                    id="detail-url"
+                    class="detail-url"
+                    href="#"
+                    target="_blank"
+                    rel="noreferrer"
+                  ></a>
+                </div>
+                <div class="detail-actions">
+                  <a
+                    id="download-all"
+                    class="button"
+                    data-variant="ghost"
+                    data-size="sm"
+                    href="#"
+                    download
+                    hidden
+                  >
+                    Download all
+                  </a>
+                  <button
+                    id="cancel-job"
+                    class="button"
+                    data-variant="ghost"
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    id="retry-job"
+                    class="button"
+                    data-variant="primary"
+                    data-size="sm"
+                    type="button"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    id="delete-job"
+                    class="icon-button icon-button--danger"
+                    type="button"
+                    aria-label="작업 삭제"
+                    title="Delete job"
+                  >
+                    ×
+                  </button>
+                </div>
+              </article>
+
+              <article id="artifact-location" class="artifact-location card" hidden>
+                <div>
+                  <p class="eyebrow">Saved on this Mac</p>
+                  <h3>Artifacts folder</h3>
+                  <code id="artifact-path"></code>
+                </div>
+                <button
+                  id="copy-artifact-path"
+                  class="button"
+                  data-variant="ghost"
+                  data-size="sm"
+                  type="button"
+                >
+                  Copy path
+                </button>
+              </article>
+
+              <article class="progress-card card">
+                <div class="progress-card__header">
+                  <div>
+                    <p id="progress-stage" class="eyebrow">Queued</p>
+                    <h3 id="progress-message">Waiting for the worker</h3>
+                  </div>
+                  <strong id="progress-percent">0%</strong>
+                </div>
+                <div
+                  id="job-progress"
+                  class="score-meter"
+                  role="progressbar"
+                  aria-label="작업 진행률"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                >
+                  <span style="width: 0%"></span>
+                </div>
+                <dl class="progress-meta">
+                  <div><dt>Created</dt><dd id="meta-created">—</dd></div>
+                  <div><dt>Started</dt><dd id="meta-started">—</dd></div>
+                  <div><dt>Duration</dt><dd id="meta-duration">—</dd></div>
+                  <div><dt>PID / exit</dt><dd id="meta-process">—</dd></div>
+                </dl>
+              </article>
+
+              <div class="summary-grid">
+                <article class="metric-card card">
+                  <p class="eyebrow">Design score</p>
+                  <strong id="summary-score">—</strong>
+                  <span id="summary-grade">Waiting for summary</span>
+                </article>
+                <article class="metric-card card">
+                  <p class="eyebrow">WCAG</p>
+                  <strong id="summary-wcag">—</strong>
+                  <span id="summary-wcag-detail">No audit yet</span>
+                </article>
+                <article class="metric-card card">
+                  <p class="eyebrow">Artifacts</p>
+                  <strong id="summary-files">—</strong>
+                  <span id="summary-bytes">No files yet</span>
+                </article>
+                <article class="metric-card card">
+                  <p class="eyebrow">Integrity</p>
+                  <strong id="summary-integrity">—</strong>
+                  <span id="summary-integrity-detail">Validation pending</span>
+                </article>
+              </div>
+
+              <div id="summary-details" class="summary-details card" hidden>
+                <div>
+                  <p class="eyebrow">Extracted palette</p>
+                  <div id="summary-colors" class="summary-colors"></div>
+                </div>
+                <div>
+                  <p class="eyebrow">Typography</p>
+                  <p id="summary-fonts" class="summary-text">—</p>
+                </div>
+                <div>
+                  <p class="eyebrow">System notes</p>
+                  <p id="summary-notes" class="summary-text">—</p>
+                </div>
+              </div>
+
+              <section
+                id="results-guide"
+                class="results-guide card"
+                aria-labelledby="results-guide-title"
+                hidden
+              >
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">How to use these results</p>
+                    <h3 id="results-guide-title">어디서부터 시작할까요?</h3>
+                  </div>
+                  <span class="count-badge">실제 생성 파일 기준</span>
+                </div>
+                <p class="guide-intro">
+                  목적에 맞는 카드를 고르면 바로 확인할 파일과 다음 행동을
+                  안내합니다. 없는 산출물은 unavailable로 표시됩니다.
+                </p>
+                <div id="guide-grid" class="guide-grid"></div>
+              </section>
+
+              <div class="operations-grid">
+                <article class="log-panel card">
+                  <div class="panel-heading">
+                    <div>
+                      <p class="eyebrow">Live stream</p>
+                      <h3>Extraction log</h3>
+                    </div>
+                    <span id="stream-status" class="connection-label">Idle</span>
+                  </div>
+                  <pre id="job-log" tabindex="0">Select a job to view logs.</pre>
+                </article>
+
+                <article id="artifact-panel" class="artifact-panel card">
+                  <div class="panel-heading">
+                    <div>
+                      <p class="eyebrow">Generated files</p>
+                      <h3>Artifact explorer</h3>
+                    </div>
+                    <div class="artifact-heading-actions">
+                      <span id="artifact-count" class="count-badge">0 files</span>
+                      <a
+                        id="download-all-secondary"
+                        class="button"
+                        data-variant="ghost"
+                        data-size="sm"
+                        href="#"
+                        download
+                        hidden
+                      >
+                        Download all
+                      </a>
+                    </div>
+                  </div>
+                  <div id="artifact-empty" class="empty-state artifact-empty">
+                    <strong>No artifacts yet.</strong>
+                    <p>완료된 작업의 산출물이 여기에 표시됩니다.</p>
+                  </div>
+                  <div id="artifact-browser" class="artifact-browser" hidden>
+                    <div class="artifact-list-wrap">
+                      <label class="filter-control" for="artifact-filter">
+                        <span>파일 검색</span>
+                        <input
+                          id="artifact-filter"
+                          type="search"
+                          placeholder="design-language.md"
+                        >
+                      </label>
+                      <div
+                        id="artifact-categories"
+                        class="artifact-categories"
+                        role="group"
+                        aria-label="파일 사용자 및 용도 필터"
+                      >
+                        <button type="button" data-category="all" aria-pressed="true">All</button>
+                        <button type="button" data-category="start" aria-pressed="false">Start here</button>
+                        <button type="button" data-category="developer" aria-pressed="false">Developer</button>
+                        <button type="button" data-category="designer" aria-pressed="false">Designer</button>
+                        <button type="button" data-category="ai" aria-pressed="false">AI</button>
+                        <button type="button" data-category="reports" aria-pressed="false">Reports</button>
+                        <button type="button" data-category="images" aria-pressed="false">Images</button>
+                      </div>
+                      <p id="artifact-no-results" class="empty-inline" hidden>
+                        검색과 필터에 맞는 파일이 없습니다.
+                      </p>
+                      <ul id="artifact-list" class="artifact-list"></ul>
+                    </div>
+                    <div class="artifact-preview">
+                      <div class="artifact-preview__header">
+                        <div>
+                          <strong id="preview-name">Select a file</strong>
+                          <span id="preview-meta"></span>
+                        </div>
+                        <a
+                          id="download-artifact"
+                          class="button"
+                          data-variant="ghost"
+                          data-size="sm"
+                          href="#"
+                          download
+                          hidden
+                        >
+                          Download
+                        </a>
+                      </div>
+                      <div id="preview-content" class="preview-content">
+                        <p>미리 볼 산출물을 선택하세요.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell site-footer__inner">
+        <p>Localhost only · jobs and logs stay on this machine.</p>
+        <a
+          href="/source-assets/designlang-app-design-language.md"
+          target="_blank"
+          rel="noreferrer"
+        >
+          View source design report
+        </a>
+      </div>
+    </footer>
+  </body>
+</html>

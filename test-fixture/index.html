@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fixture Design System</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">Fixture Studio</a>
+      <nav aria-label="Primary">
+        <a href="#tokens">Tokens</a>
+        <a href="#components">Components</a>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Design systems, verified</p>
+        <h1>A compact extraction fixture.</h1>
+        <p>One fast page with explicit colors, type, spacing, and reusable controls.</p>
+        <div class="actions">
+          <button class="button button--primary" type="button">Start audit</button>
+          <button class="button button--ghost" type="button">View tokens</button>
+        </div>
+      </section>
+      <section id="tokens" class="grid" aria-labelledby="tokens-title">
+        <h2 id="tokens-title">Token cards</h2>
+        <article class="card"><h3>Color</h3><p>#050505 · #ff3b30</p></article>
+        <article class="card"><h3>Spacing</h3><p>2px base rhythm</p></article>
+        <article class="card"><h3>Radius</h3><p>10px · 14px · 18px</p></article>
+      </section>
+      <section id="components" class="form-card" aria-labelledby="form-title">
+        <h2 id="form-title">Run a check</h2>
+        <label for="fixture-url">Website URL</label>
+        <input id="fixture-url" type="url" value="https://example.com">
+        <button class="button button--primary" type="button">Extract</button>
+      </section>
+    </main>
+  </body>
+</html>
