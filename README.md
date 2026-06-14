@@ -16,6 +16,30 @@ source of truth입니다. 서버는 이 디렉터리를 수정하지 않으며, 
 로고, 이미지, 폰트, 문구 또는 디자인을 재배포하거나 제품에 적용하기 전에는
 해당 사이트와 각 자산의 사용 조건을 별도로 확인해야 합니다.
 
+## Screenshots
+
+### Run a local extraction
+
+![Design Extract Studio extraction dashboard](./docs/screenshots/dashboard.png)
+
+### Understand and apply the generated files
+
+![Artifact usage guide](./docs/screenshots/usage-guide.png)
+
+### Search, preview, and download artifacts
+
+![Generated file explorer](./docs/screenshots/generated-files.png)
+
+### Mobile
+
+<p align="center">
+  <img
+    src="./docs/screenshots/mobile.png"
+    width="390"
+    alt="Design Extract Studio mobile artifact explorer"
+  >
+</p>
+
 ## 요구 환경
 
 - Node.js 22.9 이상
