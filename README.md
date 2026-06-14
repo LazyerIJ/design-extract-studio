@@ -8,6 +8,14 @@ localhost에서 실제 `designlang` 추출을 실행하고 큐, 실시간 로그
 source of truth입니다. 서버는 이 디렉터리를 수정하지 않으며, 새 작업의 결과는
 `design-extract-studio/jobs/<job-id>/artifacts`에 격리합니다.
 
+이 프로젝트는 `designlang`을 외부 런타임 도구로 호출하는 독립 프로젝트이며
+원본 프로젝트 또는 저자의 공식 제품이 아닙니다. 원본의 MIT 고지는
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)에 보존합니다.
+
+추출 도구의 라이선스와 분석 대상 웹사이트의 저작권은 별개입니다. 생성된
+로고, 이미지, 폰트, 문구 또는 디자인을 재배포하거나 제품에 적용하기 전에는
+해당 사이트와 각 자산의 사용 조건을 별도로 확인해야 합니다.
+
 ## 요구 환경
 
 - Node.js 22.9 이상
