@@ -1,714 +1,158 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta
-      name="description"
-      content="localhost에서 실제 designlang 추출 작업을 실행하고 검증하는 Design Extract Studio"
-    >
-    <title>Design Extract Studio</title>
-    <link
-      rel="icon"
-      href="/source-assets/designlang-app-logo.svg"
-      type="image/svg+xml"
-    >
-    <link
-      rel="stylesheet"
-      href="/source-assets/designlang-app-reset.css"
-    >
-    <link
-      rel="stylesheet"
-      href="/source-assets/designlang-app-variables.css"
-    >
-    <link
-      rel="stylesheet"
-      href="/source-assets/designlang-app-motion.css"
-    >
-    <link rel="stylesheet" href="/app.css">
-    <script src="/app.js" defer></script>
-  </head>
-  <body>
-    <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peel · 디자인 시스템 추출 스튜디오</title>
+  <meta name="description" content="원하는 웹사이트를 넣으면 디자인 시스템(색·폰트·간격·컴포넌트·반응형 레이아웃)으로 정리해 드립니다.">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">P</span><b>Peel</b><span class="ver">studio</span></div>
+    <div class="right">
+      <span id="status-pill" class="pill"><span class="dot"></span> 연결 중…</span>
+    </div>
+  </header>
 
-    <header class="site-header">
-      <nav class="shell nav-bar" aria-label="주요 탐색">
-        <a class="brand" href="#top" aria-label="Design Extract Studio 홈">
-          <img
-            class="brand__logo"
-            src="/source-assets/designlang-app-logo.svg"
-            width="32"
-            height="32"
-            alt=""
-          >
-          <span>Design Extract Studio</span>
-        </a>
-        <div class="nav-bar__links">
-          <a href="#extract">Extract</a>
-          <a href="#workspace">Jobs</a>
-          <a href="#artifact-panel">Artifacts</a>
+  <main class="main">
+    <!-- 히어로 -->
+    <section class="hero">
+      <p class="eyebrow">디자인 시스템 추출 스튜디오</p>
+      <h1>Peel</h1>
+      <p>
+        <span class="lead">원하는 웹사이트를 넣으면, 디자인 시스템으로 정리해 드려요.</span>
+        주소 하나만 붙여넣으면 실제 화면을 열어 색·폰트·간격·컴포넌트·반응형 레이아웃까지
+        분석해 토큰·문서·CSS 파일로 정리합니다. 개발자에게 그대로 넘기거나, AI에 붙여 같은 화면을 재현할 때 쓰세요.
+      </p>
+    </section>
+
+    <!-- 입력 카드 -->
+    <form id="extract-form" class="compose" novalidate>
+      <p class="clabel">🔗 분석할 웹사이트 주소</p>
+      <div class="row">
+        <input id="url-input" name="url" type="url" autocomplete="off" spellcheck="false"
+               placeholder="여기에 링크를 붙여넣으세요  ·  예: https://stripe.com">
+        <button id="run-btn" type="submit" class="go" data-act="run">추출 실행</button>
+      </div>
+      <p id="run-hint" class="hint">버튼을 누르면 곧바로 추출이 시작되고, 아래 ‘진행 상황’에서 실시간으로 확인할 수 있어요.</p>
+    </form>
+
+    <!-- 옵션 -->
+    <details class="card optcard">
+      <summary>옵션 <span class="opt-state">· 추천 설정으로 진행돼요 (다크모드·스크린샷 켜짐) — 바꾸려면 펼치기</span> <span class="chev">▾</span></summary>
+      <div class="optbody">
+        <div class="optgrid">
+          <label class="opt">
+            <span class="ctl"><input id="opt-dark" type="checkbox" checked></span>
+            <span><span class="t">다크 모드 <span class="tagrec">추천</span></span><span class="d">사이트의 다크 테마 화면도 함께 추출합니다.</span></span>
+          </label>
+          <label class="opt">
+            <span class="ctl"><input id="opt-screenshots" type="checkbox" checked></span>
+            <span><span class="t">컴포넌트 스크린샷 <span class="tagrec">추천</span></span><span class="d">버튼·카드 같은 주요 컴포넌트를 이미지로 캡처합니다.</span></span>
+          </label>
+          <label class="opt">
+            <span class="ctl"><input id="opt-layout" type="checkbox"></span>
+            <span><span class="t">반응형 레이아웃 <span class="tagopt">선택 · 느려요</span></span><span class="d">데스크톱·태블릿·모바일 화면을 열어 grid/flex 구조를 뽑습니다.</span></span>
+          </label>
         </div>
-        <span id="server-status" class="status-pill" role="status">
-          <span class="status-dot" aria-hidden="true"></span>
-          Connecting
-        </span>
-      </nav>
-    </header>
-
-    <main id="main-content">
-      <section id="top" class="hero shell" aria-labelledby="hero-title">
-        <div class="hero__content mo-slide-up">
-          <p class="eyebrow">Local extraction operations</p>
-          <h1 id="hero-title">Run a real design extraction.</h1>
-          <p class="hero__lede">
-            URL과 옵션을 입력하면 localhost 서버가 system Chrome으로
-            designlang을 실행하고 로그, 검증 결과, 요약, 산출물을 한곳에
-            보관합니다.
-          </p>
-
-          <form id="extract-form" class="extract-form card" novalidate>
-            <div class="form-heading">
-              <div>
-                <p class="eyebrow">New extraction</p>
-                <h2>Choose a source and options.</h2>
-              </div>
-              <span class="count-badge">FIFO · 1 worker</span>
+        <details class="adv">
+          <summary>고급 설정 <span class="chev">▾</span></summary>
+          <div class="advrow">
+            <div><div class="t">분석 범위</div><div class="d">시작 페이지에서 링크를 얼마나 따라가며 분석할지</div></div>
+            <div class="seg" id="seg-depth">
+              <button type="button" data-val="0" class="on">이 페이지만</button>
+              <button type="button" data-val="1">한 단계 더</button>
+              <button type="button" data-val="3">깊게 · 느림</button>
             </div>
-
-            <label for="site-url">웹사이트 URL</label>
-            <div class="extract-form__controls">
-              <input
-                id="site-url"
-                name="url"
-                type="url"
-                value="https://designlang.app"
-                placeholder="https://example.com"
-                autocomplete="url"
-                inputmode="url"
-                maxlength="2048"
-                required
-                aria-describedby="url-help form-status"
-              >
-              <button
-                id="submit-job"
-                class="button"
-                data-variant="primary"
-                type="submit"
-              >
-                Run extraction
-              </button>
-            </div>
-
-            <fieldset class="option-panel">
-              <legend>Extraction options</legend>
-              <label class="check-control">
-                <input id="option-dark" name="dark" type="checkbox" checked>
-                <span>Dark mode</span>
-              </label>
-              <label class="check-control">
-                <input
-                  id="option-screenshots"
-                  name="screenshots"
-                  type="checkbox"
-                  checked
-                >
-                <span>Component screenshots</span>
-              </label>
-              <label class="check-control">
-                <input
-                  id="option-layout"
-                  name="layout"
-                  type="checkbox"
-                  aria-describedby="option-layout-help"
-                >
-                <span>Responsive layout (+Chrome, slower)</span>
-              </label>
-              <label class="number-control" for="option-depth">
-                <span>Crawl depth</span>
-                <input
-                  id="option-depth"
-                  name="depth"
-                  type="number"
-                  min="0"
-                  max="5"
-                  step="1"
-                  value="1"
-                >
-              </label>
-              <label class="number-control" for="option-wait">
-                <span>SPA wait (ms)</span>
-                <input
-                  id="option-wait"
-                  name="wait"
-                  type="number"
-                  min="0"
-                  max="30000"
-                  step="100"
-                  value="1500"
-                >
-              </label>
-            </fieldset>
-
-            <p id="url-help" class="field-help">
-              첫 실행은 npx 캐시와 Chrome 준비 때문에 느릴 수 있습니다.
-              postinstall은 비활성화되고 system Chrome을 사용합니다.
-            </p>
-            <p id="option-layout-help" class="field-help">
-              반응형 레이아웃 추출은 선택 기능입니다. 켜면 데스크톱·태블릿·모바일을
-              각각 Chrome으로 탐색해 grid/flex 스켈레톤을 만들며, 그만큼 시간이 더 걸립니다.
-            </p>
-            <p id="form-status" class="sr-only" aria-live="polite"></p>
-          </form>
-        </div>
-
-        <aside class="hero__score card mo-scale-in" aria-labelledby="service-title">
-          <div class="card__header">
-            <div>
-              <p class="eyebrow">Worker status</p>
-              <h2 id="service-title">Extraction service</h2>
-            </div>
-            <span id="health-badge" class="grade-badge" aria-label="서버 상태">
-              …
-            </span>
           </div>
-          <p id="health-message">localhost API에 연결하는 중입니다.</p>
-          <dl class="score-facts service-facts">
-            <div><dt>Running</dt><dd id="health-running">—</dd></div>
-            <div><dt>Queued</dt><dd id="health-queued">—</dd></div>
-            <div><dt>Codex</dt><dd id="health-codex">Off</dd></div>
-          </dl>
-          <div class="command-note">
-            <code>npx --yes designlang … --system-chrome --quiet</code>
-            <p>입력은 shell 문자열이 아니라 안전한 argument 배열로 전달됩니다.</p>
+          <div class="advrow">
+            <div><div class="t">로딩 대기</div><div class="d">자바스크립트로 그려지는 사이트를 기다리는 시간</div></div>
+            <div class="seg" id="seg-wait">
+              <button type="button" data-val="500">빠름</button>
+              <button type="button" data-val="1500" class="on">보통</button>
+              <button type="button" data-val="4000">느린 사이트</button>
+            </div>
           </div>
-        </aside>
+        </details>
+      </div>
+    </details>
+
+    <!-- 진행 상황 -->
+    <div id="progress-section" hidden>
+      <div class="section-h"><h2>진행 상황</h2><span id="prog-badge" class="badge">● 추출 중</span></div>
+      <section class="card progress-card">
+        <div class="prow"><span id="prog-state" class="pstate">추출 중…</span><strong class="ppct"><span id="prog-pct">0</span><span>%</span></strong></div>
+        <div class="pbar"><i id="prog-bar"></i></div>
+        <p id="prog-now" class="pnow">준비 중…</p>
       </section>
+    </div>
 
-      <section id="workspace" class="section shell" aria-labelledby="workspace-title">
-        <div class="section__heading">
+    <!-- 결과 / 다운로드 -->
+    <div id="result-section" hidden>
+      <div class="section-h"><h2>결과 · 다운로드</h2></div>
+      <section class="card">
+        <div class="dhead">
           <div>
-            <p class="eyebrow">Extraction history</p>
-            <h2 id="workspace-title">Jobs and artifacts</h2>
+            <h3 id="res-host">—</h3>
+            <div id="res-sub" class="sub">—</div>
           </div>
-          <p>상태, 실시간 로그, 검증 결과와 생성 파일을 확인하세요.</p>
+          <div class="save">
+            <span class="lab">저장 위치</span>
+            <span id="res-folder" class="folder">기본 다운로드 폴더</span>
+            <button id="pick-folder" type="button" class="btn ghost sm">폴더 선택</button>
+            <button id="save-folder" type="button" class="btn sm">이 폴더에 저장</button>
+          </div>
         </div>
 
-        <div class="workspace-layout">
-          <aside class="jobs-panel card" aria-labelledby="jobs-title">
-            <div class="jobs-panel__header">
-              <div>
-                <p class="eyebrow">History</p>
-                <h3 id="jobs-title">Extraction jobs</h3>
-              </div>
-              <button
-                id="refresh-jobs"
-                class="icon-button"
-                type="button"
-                aria-label="작업 목록 새로고침"
-                title="Refresh jobs"
-              >
-                ↻
-              </button>
-            </div>
-            <label class="filter-control" for="status-filter">
-              <span>상태 필터</span>
-              <select id="status-filter">
-                <option value="">All jobs</option>
-                <option value="queued">Queued</option>
-                <option value="running">Running</option>
-                <option value="succeeded">Succeeded</option>
-                <option value="failed">Failed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </label>
-            <div id="jobs-loading" class="loading-state" role="status">
-              작업 이력을 불러오는 중입니다.
-            </div>
-            <div id="jobs-empty" class="empty-state" hidden>
-              <strong>No extractions yet.</strong>
-              <p>위 폼에서 첫 작업을 실행하세요.</p>
-            </div>
-            <ol id="job-list" class="job-list" aria-label="추출 작업 목록"></ol>
-          </aside>
+        <div style="padding:0 16px">
+          <dl class="stat">
+            <div><dt>상태</dt><dd id="stat-status">—</dd></div>
+            <div><dt>파일</dt><dd id="stat-files">—</dd></div>
+            <div><dt>소요</dt><dd id="stat-duration">—</dd></div>
+            <div><dt>WCAG</dt><dd id="stat-wcag">—</dd></div>
+          </dl>
+        </div>
 
-          <section class="job-detail" aria-live="polite">
-            <div id="detail-empty" class="empty-state card detail-empty">
-              <img
-                src="/source-assets/designlang-app-logo.svg"
-                width="48"
-                height="48"
-                alt=""
-              >
-              <strong>Select a job.</strong>
-              <p>작업을 선택하면 진행 로그와 산출물이 여기에 표시됩니다.</p>
-            </div>
-
-            <div id="detail-content" hidden>
-              <article class="detail-header card">
-                <div class="detail-header__copy">
-                  <div class="detail-heading-row">
-                    <span id="detail-status" class="status-label">Queued</span>
-                    <span id="detail-id" class="mono-meta"></span>
-                  </div>
-                  <h3 id="detail-host">—</h3>
-                  <a
-                    id="detail-url"
-                    class="detail-url"
-                    href="#"
-                    target="_blank"
-                    rel="noreferrer"
-                  ></a>
-                </div>
-                <div class="detail-actions">
-                  <a
-                    id="download-all"
-                    class="button"
-                    data-variant="ghost"
-                    data-size="sm"
-                    href="#"
-                    download
-                    hidden
-                  >
-                    Download all
-                  </a>
-                  <button
-                    id="cancel-job"
-                    class="button"
-                    data-variant="ghost"
-                    type="button"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    id="retry-job"
-                    class="button"
-                    data-variant="primary"
-                    data-size="sm"
-                    type="button"
-                  >
-                    Retry
-                  </button>
-                  <button
-                    id="delete-job"
-                    class="icon-button icon-button--danger"
-                    type="button"
-                    aria-label="작업 삭제"
-                    title="Delete job"
-                  >
-                    ×
-                  </button>
-                </div>
-              </article>
-
-              <article id="artifact-location" class="artifact-location card" hidden>
-                <div>
-                  <p class="eyebrow">Saved on this Mac</p>
-                  <h3>Artifacts folder</h3>
-                  <code id="artifact-path"></code>
-                </div>
-                <button
-                  id="copy-artifact-path"
-                  class="button"
-                  data-variant="ghost"
-                  data-size="sm"
-                  type="button"
-                >
-                  Copy path
-                </button>
-              </article>
-
-              <article class="progress-card card">
-                <div class="progress-card__header">
-                  <div>
-                    <p id="progress-stage" class="eyebrow">Queued</p>
-                    <h3 id="progress-message">Waiting for the worker</h3>
-                  </div>
-                  <strong id="progress-percent">0%</strong>
-                </div>
-                <div
-                  id="job-progress"
-                  class="score-meter"
-                  role="progressbar"
-                  aria-label="작업 진행률"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                  aria-valuenow="0"
-                >
-                  <span style="width: 0%"></span>
-                </div>
-                <dl class="progress-meta">
-                  <div><dt>Created</dt><dd id="meta-created">—</dd></div>
-                  <div><dt>Started</dt><dd id="meta-started">—</dd></div>
-                  <div><dt>Duration</dt><dd id="meta-duration">—</dd></div>
-                  <div><dt>PID / exit</dt><dd id="meta-process">—</dd></div>
-                </dl>
-              </article>
-
-              <div class="summary-grid">
-                <article class="metric-card card">
-                  <p class="eyebrow">Design score</p>
-                  <strong id="summary-score">—</strong>
-                  <span id="summary-grade">Waiting for summary</span>
-                </article>
-                <article class="metric-card card">
-                  <p class="eyebrow">WCAG</p>
-                  <strong id="summary-wcag">—</strong>
-                  <span id="summary-wcag-detail">No audit yet</span>
-                </article>
-                <article class="metric-card card">
-                  <p class="eyebrow">Artifacts</p>
-                  <strong id="summary-files">—</strong>
-                  <span id="summary-bytes">No files yet</span>
-                </article>
-                <article class="metric-card card">
-                  <p class="eyebrow">Integrity</p>
-                  <strong id="summary-integrity">—</strong>
-                  <span id="summary-integrity-detail">Validation pending</span>
-                </article>
-              </div>
-
-              <div id="summary-details" class="summary-details card" hidden>
-                <div>
-                  <p class="eyebrow">Extracted palette</p>
-                  <div id="summary-colors" class="summary-colors"></div>
-                </div>
-                <div>
-                  <p class="eyebrow">Typography</p>
-                  <p id="summary-fonts" class="summary-text">—</p>
-                </div>
-                <div>
-                  <p class="eyebrow">System notes</p>
-                  <p id="summary-notes" class="summary-text">—</p>
-                </div>
-              </div>
-
-              <section
-                id="layout-panel"
-                class="layout-panel card"
-                aria-labelledby="layout-panel-title"
-                hidden
-              >
-                <div class="panel-heading">
-                  <div>
-                    <p class="eyebrow">Responsive layout</p>
-                    <h3 id="layout-panel-title">레이아웃 추출</h3>
-                  </div>
-                  <span id="layout-status-badge" class="count-badge">—</span>
-                </div>
-                <p class="guide-intro">
-                  브레이크포인트별 grid/flex 구조를 추출해 와이어프레임·시맨틱
-                  스켈레톤·반응형 CSS로 재현합니다.
-                </p>
-                <div id="layout-breakpoints" class="layout-breakpoints"></div>
-                <div class="layout-body">
-                  <figure class="layout-wireframe">
-                    <figcaption>Desktop wireframe</figcaption>
-                    <div id="layout-wireframe-frame" class="layout-wireframe__frame">
-                      <p class="empty-inline">와이어프레임이 여기에 표시됩니다.</p>
-                    </div>
-                  </figure>
-                  <div id="layout-files" class="layout-files"></div>
-                </div>
-              </section>
-
-              <section
-                id="apply-panel"
-                class="apply-panel card"
-                aria-labelledby="apply-panel-title"
-                hidden
-              >
-                <div class="panel-heading">
-                  <div>
-                    <p class="eyebrow">Apply to project</p>
-                    <h3 id="apply-panel-title">로컬 웹 프로젝트에 적용</h3>
-                  </div>
-                  <span class="count-badge">localhost only</span>
-                </div>
-                <p class="apply-intro">
-                  대상 Git 프로젝트를 먼저 읽기 전용으로 분석합니다. 구조와 CSS
-                  entry를 확정할 수 없거나 worktree가 dirty면 수정하지 않습니다.
-                </p>
-
-                <form id="apply-form" class="apply-form">
-                  <label for="apply-target">프로젝트 절대 경로</label>
-                  <div class="apply-form__target">
-                    <input
-                      id="apply-target"
-                      name="targetPath"
-                      type="text"
-                      placeholder="/Users/you/projects/my-web-app"
-                      autocomplete="off"
-                      spellcheck="false"
-                      required
-                      aria-describedby="apply-help apply-live"
-                    >
-                    <button
-                      id="analyze-project"
-                      class="button"
-                      data-variant="ghost"
-                      type="button"
-                    >
-                      Analyze
-                    </button>
-                  </div>
-                  <p id="apply-help" class="field-help">
-                    Git 저장소, framework, CSS entry, Tailwind/shadcn과
-                    build/lint/test 명령을 확인합니다.
-                  </p>
-
-                  <div id="compatibility-report" class="compatibility-report" hidden>
-                    <div class="compatibility-report__header">
-                      <div>
-                        <span id="compatibility-status" class="status-label">—</span>
-                        <strong id="compatibility-title">분석 대기</strong>
-                      </div>
-                      <span id="compatibility-target" class="mono-meta"></span>
-                    </div>
-                    <dl class="compatibility-facts">
-                      <div><dt>Framework</dt><dd id="apply-framework">—</dd></div>
-                      <div><dt>CSS entry</dt><dd id="apply-css-entry">—</dd></div>
-                      <div><dt>Package manager</dt><dd id="apply-package-manager">—</dd></div>
-                      <div><dt>Git</dt><dd id="apply-git">—</dd></div>
-                      <div><dt>Tailwind</dt><dd id="apply-tailwind">—</dd></div>
-                      <div><dt>shadcn</dt><dd id="apply-shadcn">—</dd></div>
-                    </dl>
-                    <div class="compatibility-notes">
-                      <div>
-                        <strong>Blockers</strong>
-                        <ul id="apply-blockers"></ul>
-                      </div>
-                      <div>
-                        <strong>Warnings</strong>
-                        <ul id="apply-warnings"></ul>
-                      </div>
-                    </div>
-                    <div>
-                      <p class="eyebrow">Planned changes</p>
-                      <ul id="apply-plan" class="apply-plan"></ul>
-                    </div>
-                  </div>
-
-                  <fieldset class="apply-modes">
-                    <legend>적용 방식</legend>
-                    <label>
-                      <input
-                        id="apply-mode-safe"
-                        name="applyMode"
-                        type="radio"
-                        value="safe"
-                        checked
-                      >
-                      <span>
-                        <strong>Safe install</strong>
-                        <small>관리 폴더와 확정된 CSS import만 변경</small>
-                      </span>
-                    </label>
-                    <label>
-                      <input
-                        id="apply-mode-ai"
-                        name="applyMode"
-                        type="radio"
-                        value="ai"
-                      >
-                      <span>
-                        <strong>AI assisted</strong>
-                        <small>Safe install 후 Codex로 컴포넌트 적응</small>
-                      </span>
-                    </label>
-                  </fieldset>
-
-                  <label class="apply-confirmation">
-                    <input id="apply-confirmed" type="checkbox">
-                    <span>
-                      분석 결과와 변경 계획을 확인했으며 clean Git 프로젝트에
-                      적용하는 것에 동의합니다.
-                    </span>
-                  </label>
-                  <div class="apply-actions">
-                    <button
-                      id="start-application"
-                      class="button"
-                      data-variant="primary"
-                      type="submit"
-                      disabled
-                    >
-                      Apply design system
-                    </button>
-                    <button
-                      id="cancel-application"
-                      class="button"
-                      data-variant="ghost"
-                      type="button"
-                      hidden
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-
-                <div id="application-run" class="application-run" hidden>
-                  <div class="progress-card__header">
-                    <div>
-                      <p id="application-stage" class="eyebrow">Queued</p>
-                      <h3 id="application-message">Waiting</h3>
-                    </div>
-                    <strong id="application-percent">0%</strong>
-                  </div>
-                  <div
-                    id="application-progress"
-                    class="score-meter"
-                    role="progressbar"
-                    aria-label="디자인 시스템 적용 진행률"
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                    aria-valuenow="0"
-                  >
-                    <span style="width: 0%"></span>
-                  </div>
-                  <pre id="application-log" tabindex="0">적용 로그가 여기에 표시됩니다.</pre>
-                  <div id="application-result" class="application-result" hidden>
-                    <div>
-                      <p class="eyebrow">Changed files</p>
-                      <ul id="application-files"></ul>
-                    </div>
-                    <div>
-                      <p class="eyebrow">Verification</p>
-                      <ul id="application-verification"></ul>
-                    </div>
-                  </div>
-                </div>
-                <p id="apply-live" class="sr-only" aria-live="polite"></p>
-              </section>
-
-              <section
-                id="results-guide"
-                class="results-guide card"
-                aria-labelledby="results-guide-title"
-                hidden
-              >
-                <div class="panel-heading">
-                  <div>
-                    <p class="eyebrow">How to use these results</p>
-                    <h3 id="results-guide-title">어디서부터 시작할까요?</h3>
-                  </div>
-                  <span class="count-badge">실제 생성 파일 기준</span>
-                </div>
-                <p class="guide-intro">
-                  목적에 맞는 카드를 고르면 바로 확인할 파일과 다음 행동을
-                  안내합니다. 없는 산출물은 unavailable로 표시됩니다.
-                </p>
-                <div id="guide-grid" class="guide-grid"></div>
-              </section>
-
-              <div class="operations-grid">
-                <article class="log-panel card">
-                  <div class="panel-heading">
-                    <div>
-                      <p class="eyebrow">Live stream</p>
-                      <h3>Extraction log</h3>
-                    </div>
-                    <span id="stream-status" class="connection-label">Idle</span>
-                  </div>
-                  <pre id="job-log" tabindex="0">Select a job to view logs.</pre>
-                </article>
-
-                <article id="artifact-panel" class="artifact-panel card">
-                  <div class="panel-heading">
-                    <div>
-                      <p class="eyebrow">Generated files</p>
-                      <h3>Artifact explorer</h3>
-                    </div>
-                    <div class="artifact-heading-actions">
-                      <span id="artifact-count" class="count-badge">0 files</span>
-                      <a
-                        id="download-all-secondary"
-                        class="button"
-                        data-variant="ghost"
-                        data-size="sm"
-                        href="#"
-                        download
-                        hidden
-                      >
-                        Download all
-                      </a>
-                    </div>
-                  </div>
-                  <div id="artifact-empty" class="empty-state artifact-empty">
-                    <strong>No artifacts yet.</strong>
-                    <p>완료된 작업의 산출물이 여기에 표시됩니다.</p>
-                  </div>
-                  <div id="artifact-browser" class="artifact-browser" hidden>
-                    <div class="artifact-list-wrap">
-                      <label class="filter-control" for="artifact-filter">
-                        <span>파일 검색</span>
-                        <input
-                          id="artifact-filter"
-                          type="search"
-                          placeholder="design-language.md"
-                        >
-                      </label>
-                      <div
-                        id="artifact-categories"
-                        class="artifact-categories"
-                        role="group"
-                        aria-label="파일 사용자 및 용도 필터"
-                      >
-                        <button type="button" data-category="all" aria-pressed="true">All</button>
-                        <button type="button" data-category="start" aria-pressed="false">Start here</button>
-                        <button type="button" data-category="developer" aria-pressed="false">Developer</button>
-                        <button type="button" data-category="designer" aria-pressed="false">Designer</button>
-                        <button type="button" data-category="ai" aria-pressed="false">AI</button>
-                        <button type="button" data-category="reports" aria-pressed="false">Reports</button>
-                        <button type="button" data-category="images" aria-pressed="false">Images</button>
-                        <button type="button" data-category="layout" aria-pressed="false">Layout</button>
-                      </div>
-                      <p id="artifact-no-results" class="empty-inline" hidden>
-                        검색과 필터에 맞는 파일이 없습니다.
-                      </p>
-                      <ul id="artifact-list" class="artifact-list"></ul>
-                    </div>
-                    <div class="artifact-preview">
-                      <div class="artifact-preview__header">
-                        <div>
-                          <strong id="preview-name">Select a file</strong>
-                          <span id="preview-meta"></span>
-                        </div>
-                        <a
-                          id="download-artifact"
-                          class="button"
-                          data-variant="ghost"
-                          data-size="sm"
-                          href="#"
-                          download
-                          hidden
-                        >
-                          Download
-                        </a>
-                      </div>
-                      <div id="preview-content" class="preview-content">
-                        <p>미리 볼 산출물을 선택하세요.</p>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              </div>
+        <div class="pad">
+          <section id="layout-block" class="result-block" hidden>
+            <p class="eyebrow">반응형 레이아웃 — 추출된 화면 구조</p>
+            <div class="bps" id="bp-cards"></div>
+            <div class="wfwrap">
+              <div class="wf-bar"><span class="dots"><i></i><i></i><i></i></span><span class="wf-title" id="wf-title">와이어프레임</span></div>
+              <div class="wf" id="wireframe-host"><p class="wf-empty">레이아웃을 추출하지 않았습니다.</p></div>
             </div>
           </section>
+
+          <section id="preview-block" class="result-block" hidden>
+            <p class="eyebrow">미리보기 — preview.html <a id="preview-open" class="open-link" target="_blank" rel="noopener">새 탭에서 열기 ↗</a></p>
+            <div class="wfwrap">
+              <div class="wf-bar"><span class="dots"><i></i><i></i><i></i></span><span class="wf-title" id="preview-title">추출 결과 미리보기</span></div>
+              <iframe id="preview-frame" class="preview-frame" title="추출 결과 미리보기" sandbox="allow-same-origin"></iframe>
+            </div>
+          </section>
+
+          <div class="dl-head">
+            <div class="chips" id="dl-chips"></div>
+            <div class="dl-actions">
+              <button id="dl-all" type="button" class="btn sm">전부 다운로드</button>
+              <button id="dl-selected" type="button" class="btn ghost sm">선택 항목만 받기</button>
+            </div>
+          </div>
+          <div class="files" id="dl-files"></div>
         </div>
       </section>
-    </main>
+    </div>
 
-    <footer class="site-footer">
-      <div class="shell site-footer__inner">
-        <p>Localhost only · jobs and logs stay on this machine.</p>
-        <a
-          href="/source-assets/designlang-app-design-language.md"
-          target="_blank"
-          rel="noreferrer"
-        >
-          View source design report
-        </a>
-      </div>
-    </footer>
-  </body>
+    <!-- 작업 이력 -->
+    <div class="history" id="history-section" hidden>
+      <div class="section-h"><h2>작업 이력</h2><span id="history-count" class="muted-sm"></span><button id="clear-history" type="button" class="btn ghost sm hist-clear">이력 비우기</button></div>
+      <div class="joblist" id="history-list"></div>
+    </div>
+  </main>
+
+  <footer class="footer">localhost 전용 · 작업과 로그는 이 기기에만 남습니다.</footer>
+
+  <script src="/app.js" defer></script>
+</body>
 </html>
