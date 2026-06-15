@@ -130,9 +130,15 @@ a{color:inherit}
 .wf-bar .dots{display:flex; gap:5px}
 .wf-bar .dots i{width:9px; height:9px; border-radius:50%; background:var(--line-2)}
 .wf-bar .wf-title{font-size:12px; color:var(--muted)}
-.wf{padding:16px; background:#fff; min-height:120px}
-.wf img{display:block; max-width:100%; margin:0 auto; border:1px solid var(--line); border-radius:6px}
+.wf{padding:16px; background:#fff; min-height:120px; overflow:auto}
 .wf-empty{color:var(--faint); font-size:13px; text-align:center; margin:24px 0}
+/* layout.json 트리를 그린 중첩 박스 (브레이크포인트별 reflow) */
+.wf-canvas{margin:0 auto; transition:max-width .2s ease}
+.wf-node{border:1px solid #d3d5e0; border-radius:7px; background:#f4f5fb; padding:7px 8px; min-width:0}
+.wf-node.leaf{background:#fff; border-style:dashed; border-color:#cfd2e0; min-height:30px}
+.wf-label{font:600 10.5px ui-monospace,monospace; color:#6b6f88; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.wf-node.leaf .wf-label{color:#9aa0b4}
+.wf-kids{display:flex; flex-direction:column; gap:6px; margin-top:6px}
 .open-link{font-size:11px; font-weight:600; color:var(--run); text-decoration:none; margin-left:6px}
 .preview-frame{width:100%; height:300px; border:0; background:#fff; display:block}
 
