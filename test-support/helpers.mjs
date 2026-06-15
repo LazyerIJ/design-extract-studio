@@ -18,6 +18,8 @@ export function testConfig(root, overrides = {}) {
     sourceAssetsDir: root,
     npmCache: join(root, "npm-cache"),
     port: 0,
+    // Stub-runner tests must not launch real Chrome for the layout pass.
+    enableLayoutExtraction: false,
     ...overrides,
   });
 }
