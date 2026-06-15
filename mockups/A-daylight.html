@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시안 A — Daylight (Design Extract Studio)</title>
+<style>
+  /* ── 시안 A: 밝고 차분한 스튜디오 톤 ───────────────────────────────
+     - 흰 배경 + 부드러운 회색, 단일 보라 액센트
+     - 좌측 고정 사이드바(네비) + 넓은 작업 영역
+     - 라운드 14px, 은은한 그림자, Pretendard/Inter 타이포 */
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f2f6;
+    --ink:#15171c; --muted:#6b7280; --line:#e7e9ee;
+    --accent:#5b5bf5; --accent-soft:#ececff;
+    --ok:#16a34a; --ok-soft:#e7f6ec; --warn:#d97706; --bad:#dc2626;
+    --r:14px; --shadow:0 1px 2px rgba(16,18,28,.04), 0 8px 24px rgba(16,18,28,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:Pretendard,Inter,-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased;
+    display:grid; grid-template-columns:248px 1fr; min-height:100vh;
+  }
+  /* 사이드바 */
+  .side{position:sticky; top:0; height:100vh; background:var(--surface); border-right:1px solid var(--line); padding:20px 16px; display:flex; flex-direction:column; gap:6px}
+  .brand{display:flex; align-items:center; gap:10px; padding:8px 8px 18px}
+  .brand .logo{width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,#6d6dff,#9b8cff); display:grid; place-items:center; color:#fff; font-weight:800}
+  .brand b{font-size:15px; letter-spacing:-.2px}
+  .nav{display:flex; flex-direction:column; gap:2px; margin-top:4px}
+  .nav a{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; color:var(--muted); text-decoration:none; font-size:14px; font-weight:600}
+  .nav a .i{width:18px; text-align:center; opacity:.8}
+  .nav a.on{background:var(--accent-soft); color:var(--accent)}
+  .nav a:hover:not(.on){background:var(--surface-2); color:var(--ink)}
+  .side .foot{margin-top:auto; border-top:1px solid var(--line); padding-top:14px; font-size:12px; color:var(--muted)}
+  .pill{display:inline-flex; align-items:center; gap:7px; font-weight:700; font-size:12px; color:var(--ok); background:var(--ok-soft); padding:5px 10px; border-radius:999px}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--ok)}
+
+  /* 메인 */
+  .main{padding:26px 30px 40px; max-width:1180px}
+  .top{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:22px}
+  .top h1{font-size:24px; margin:0 0 4px; letter-spacing:-.4px}
+  .top p{margin:0; color:var(--muted); font-size:14px}
+  .btn{border:0; cursor:pointer; font-weight:700; font-size:14px; border-radius:11px; padding:11px 18px; background:var(--accent); color:#fff}
+  .btn.ghost{background:var(--surface); color:var(--ink); border:1px solid var(--line)}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
+  .pad{padding:18px}
+  .eyebrow{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; margin:0 0 10px}
+
+  /* 추출 폼 (간소화·친절) */
+  .compose{padding:18px; margin-bottom:24px}
+  .compose .row{display:flex; gap:10px}
+  .compose input[type=url]{flex:1; border:1px solid var(--line); background:var(--surface-2); border-radius:11px; padding:13px 14px; font-size:15px}
+  .opts{display:flex; flex-wrap:wrap; gap:18px; margin-top:14px; color:var(--muted); font-size:13.5px}
+  .opts label{display:inline-flex; align-items:center; gap:8px; cursor:pointer}
+  .opts .num{display:inline-flex; align-items:center; gap:8px}
+  .opts input[type=number]{width:74px; border:1px solid var(--line); border-radius:8px; padding:6px 8px}
+
+  /* 워크스페이스 그리드 */
+  .grid{display:grid; grid-template-columns:300px 1fr; gap:18px; align-items:start}
+  .joblist{display:flex; flex-direction:column; gap:8px}
+  .job{display:block; text-align:left; width:100%; border:1px solid var(--line); background:var(--surface); border-radius:12px; padding:12px 13px; cursor:pointer}
+  .job.sel{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+  .job .h{display:flex; justify-content:space-between; align-items:center; gap:8px}
+  .job .host{font-weight:700; font-size:14px}
+  .job .url{color:var(--muted); font-size:12px; margin:4px 0 8px; font-family:ui-monospace,monospace}
+  .job .meta{color:var(--muted); font-size:12px}
+  .tag{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px}
+  .t-ok{color:var(--ok); background:var(--ok-soft)}
+  .t-run{color:var(--accent); background:var(--accent-soft)}
+  .progress{height:6px; border-radius:999px; background:var(--surface-2); overflow:hidden; margin-top:9px}
+  .progress > i{display:block; height:100%; background:var(--accent)}
+
+  /* 디테일 */
+  .detail{display:flex; flex-direction:column; gap:18px}
+  .dhead{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px}
+  .dhead h2{margin:0; font-size:18px}
+  .dhead .sub{color:var(--muted); font-size:13px; font-family:ui-monospace,monospace}
+  .stat{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border-radius:12px; overflow:hidden}
+  .stat > div{background:var(--surface); padding:14px}
+  .stat dt{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin:0 0 5px}
+  .stat dd{margin:0; font-size:17px; font-weight:700}
+
+  /* 레이아웃 패널 + 아티팩트 */
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+  .wire{border:1px dashed var(--line); border-radius:10px; background:var(--surface-2); height:188px; display:grid; place-items:center; color:var(--muted); font-size:13px}
+  .files{display:flex; flex-direction:column; gap:4px}
+  .file{display:flex; align-items:center; gap:11px; padding:9px 10px; border-radius:9px; cursor:pointer}
+  .file:hover{background:var(--surface-2)}
+  .file .ico{width:30px; height:30px; border-radius:8px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; font-size:12px; font-weight:700}
+  .file .n{font-size:13.5px; font-weight:600}
+  .file .d{font-size:12px; color:var(--muted)}
+  .chips{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px}
+  .chip{font-size:12px; padding:6px 11px; border-radius:999px; border:1px solid var(--line); color:var(--muted); cursor:pointer}
+  .chip.on{background:var(--ink); color:#fff; border-color:var(--ink)}
+  @media(max-width:980px){ body{grid-template-columns:1fr} .side{display:none} .grid,.two{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+  <aside class="side">
+    <div class="brand"><span class="logo">D</span><b>Design Extract Studio</b></div>
+    <nav class="nav">
+      <a class="on" href="#"><span class="i">✦</span> 새 추출</a>
+      <a href="#"><span class="i">▤</span> 작업</a>
+      <a href="#"><span class="i">◳</span> 아티팩트</a>
+      <a href="#"><span class="i">◷</span> 레이아웃</a>
+    </nav>
+    <div class="foot">
+      <span class="pill"><span class="dot"></span> Online</span>
+      <p style="margin:12px 2px 0">localhost 전용 · 작업과 로그는 이 기기에만 남습니다.</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <div>
+        <h1>새 디자인 추출</h1>
+        <p>URL을 넣으면 system Chrome으로 designlang을 실행해 토큰·문서·CSS를 만들어 줍니다.</p>
+      </div>
+      <button class="btn">추출 실행</button>
+    </div>
+
+    <section class="card compose">
+      <div class="row">
+        <input type="url" value="https://designlang.app" placeholder="https://example.com">
+        <button class="btn">추출 실행</button>
+      </div>
+      <div class="opts">
+        <label><input type="checkbox" checked> 다크 모드</label>
+        <label><input type="checkbox" checked> 컴포넌트 스크린샷</label>
+        <label><input type="checkbox"> 반응형 레이아웃 <span style="color:var(--accent)">(+Chrome)</span></label>
+        <span class="num">크롤 깊이 <input type="number" value="1"></span>
+        <span class="num">SPA 대기(ms) <input type="number" value="1500"></span>
+      </div>
+    </section>
+
+    <div class="grid">
+      <div>
+        <p class="eyebrow">작업 이력</p>
+        <div class="joblist">
+          <button class="job sel">
+            <div class="h"><span class="host">designlang.app</span><span class="tag t-ok">완료</span></div>
+            <div class="url">https://designlang.app</div>
+            <div class="meta">06.14 01:56 · 53 files</div>
+          </button>
+          <button class="job">
+            <div class="h"><span class="host">127.0.0.1</span><span class="tag t-run">진행 중</span></div>
+            <div class="url">http://127.0.0.1:4220/</div>
+            <div class="meta">방금 · 추출 중</div>
+            <div class="progress"><i style="width:62%"></i></div>
+          </button>
+          <button class="job">
+            <div class="h"><span class="host">stripe.com</span><span class="tag t-ok">완료</span></div>
+            <div class="url">https://stripe.com</div>
+            <div class="meta">어제 · 48 files</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="detail">
+        <div class="card dhead">
+          <div>
+            <h2>designlang.app</h2>
+            <div class="sub">job mb1k2c · https://designlang.app</div>
+          </div>
+          <div style="display:flex; gap:8px">
+            <button class="btn ghost">전체 다운로드</button>
+            <button class="btn ghost">다시 실행</button>
+          </div>
+        </div>
+
+        <dl class="stat">
+          <div><dt>상태</dt><dd style="color:var(--ok)">완료</dd></div>
+          <div><dt>파일</dt><dd>53</dd></div>
+          <div><dt>소요</dt><dd>1m 12s</dd></div>
+          <div><dt>WCAG</dt><dd>AA · 96</dd></div>
+        </dl>
+
+        <div class="two">
+          <section class="card pad">
+            <p class="eyebrow">반응형 레이아웃</p>
+            <div class="wire">desktop · tablet · mobile 와이어프레임</div>
+            <p style="color:var(--muted); font-size:12.5px; margin:12px 0 0">grid/flex 스켈레톤 + 브레이크포인트별 CSS</p>
+          </section>
+
+          <section class="card pad">
+            <p class="eyebrow">생성된 파일</p>
+            <div class="chips">
+              <span class="chip on">전체</span><span class="chip">처음이라면</span>
+              <span class="chip">개발자</span><span class="chip">디자이너</span><span class="chip">레이아웃</span>
+            </div>
+            <div class="files">
+              <div class="file"><span class="ico">MD</span><div><div class="n">design-language.md</div><div class="d">핵심 디자인 보고서 · 9.7 KB</div></div></div>
+              <div class="file"><span class="ico">CSS</span><div><div class="n">variables.css</div><div class="d">CSS 토큰 변수 · 3.1 KB</div></div></div>
+              <div class="file"><span class="ico">SVG</span><div><div class="n">wireframe.svg</div><div class="d">레이아웃 와이어프레임 · 12 KB</div></div></div>
+              <div class="file"><span class="ico">TSX</span><div><div class="n">anatomy.tsx</div><div class="d">React 컴포넌트 구조 · 732 B</div></div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
