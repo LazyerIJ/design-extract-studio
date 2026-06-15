@@ -370,6 +370,35 @@
               </div>
 
               <section
+                id="layout-panel"
+                class="layout-panel card"
+                aria-labelledby="layout-panel-title"
+                hidden
+              >
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Responsive layout</p>
+                    <h3 id="layout-panel-title">레이아웃 추출</h3>
+                  </div>
+                  <span id="layout-status-badge" class="count-badge">—</span>
+                </div>
+                <p class="guide-intro">
+                  브레이크포인트별 grid/flex 구조를 추출해 와이어프레임·시맨틱
+                  스켈레톤·반응형 CSS로 재현합니다.
+                </p>
+                <div id="layout-breakpoints" class="layout-breakpoints"></div>
+                <div class="layout-body">
+                  <figure class="layout-wireframe">
+                    <figcaption>Desktop wireframe</figcaption>
+                    <div id="layout-wireframe-frame" class="layout-wireframe__frame">
+                      <p class="empty-inline">와이어프레임이 여기에 표시됩니다.</p>
+                    </div>
+                  </figure>
+                  <div id="layout-files" class="layout-files"></div>
+                </div>
+              </section>
+
+              <section
                 id="results-guide"
                 class="results-guide card"
                 aria-labelledby="results-guide-title"
@@ -449,6 +478,7 @@
                         <button type="button" data-category="ai" aria-pressed="false">AI</button>
                         <button type="button" data-category="reports" aria-pressed="false">Reports</button>
                         <button type="button" data-category="images" aria-pressed="false">Images</button>
+                        <button type="button" data-category="layout" aria-pressed="false">Layout</button>
                       </div>
                       <p id="artifact-no-results" class="empty-inline" hidden>
                         검색과 필터에 맞는 파일이 없습니다.

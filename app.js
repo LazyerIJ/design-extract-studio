@@ -434,6 +434,7 @@
     if (succeeded) renderUsageGuide();
 
     renderSummary(job);
+    renderLayout(job);
     if (typeof job.recentLog === "string") {
       $("#job-log").textContent = job.recentLog || "No log output yet.";
       $("#job-log").scrollTop = $("#job-log").scrollHeight;
@@ -662,6 +663,7 @@
       state.artifacts = data.artifacts;
       renderArtifacts();
       renderUsageGuide();
+      if (state.selectedJob) renderLayout(state.selectedJob);
     } catch {
       state.artifacts = [];
       renderArtifacts();
@@ -725,6 +727,97 @@
       button.addEventListener("click", () => void previewArtifact(artifact));
       item.append(button);
       list.append(item);
+    }
+  }
+
+  function renderLayout(job) {
+    const panel = $("#layout-panel");
+    const layout = job?.layout;
+    const visible =
+      job?.status === "succeeded" && layout && layout.status !== "disabled";
+    panel.hidden = !visible;
+    if (!visible) return;
+
+    $("#layout-status-badge").textContent =
+      layout.status === "succeeded" ? "추출 완료" : "추출 실패";
+
+    const bpWrap = $("#layout-breakpoints");
+    bpWrap.replaceChildren();
+    for (const bp of layout.breakpoints ?? []) {
+      const chip = element("span", "layout-chip");
+      chip.append(
+        element("strong", "", bp.name),
+        element("span", "layout-chip__width", `${bp.width}px`),
+        element(
+          "span",
+          "layout-chip__meta",
+          `${bp.nodes ?? "—"} nodes · ${bp.scrollHeight ?? "—"}px`,
+        ),
+      );
+      bpWrap.append(chip);
+    }
+
+    const find = (suffix) =>
+      state.artifacts.find((artifact) => artifact.name.endsWith(suffix));
+
+    const frame = $("#layout-wireframe-frame");
+    frame.replaceChildren();
+    const wireframe = find("-wireframe.svg");
+    if (wireframe) {
+      const img = element("img");
+      img.src = artifactUrl(wireframe);
+      img.alt = "Desktop layout wireframe";
+      img.loading = "lazy";
+      frame.append(img);
+    } else {
+      frame.append(
+        element(
+          "p",
+          "empty-inline",
+          layout.status === "failed"
+            ? layout.error || "레이아웃 추출에 실패했습니다."
+            : "와이어프레임을 사용할 수 없습니다.",
+        ),
+      );
+    }
+
+    const files = $("#layout-files");
+    files.replaceChildren();
+    const defs = [
+      ["-layout-skeleton.html", "HTML 스켈레톤", "시맨틱 구조 재현"],
+      ["-layout.css", "반응형 CSS", "브레이크포인트별 grid/flex"],
+      ["-layout.json", "레이아웃 데이터", "원본 트리(JSON)"],
+      ["-wireframe.svg", "와이어프레임 SVG", "벡터 구조도"],
+    ];
+    for (const [suffix, title, desc] of defs) {
+      const artifact = find(suffix);
+      const row = element("div", "layout-file");
+      row.append(element("strong", "", title), element("span", "", desc));
+      const actions = element("span", "layout-file__actions");
+      if (artifact) {
+        if (artifact.previewable) {
+          const preview = element("button", "", "Preview");
+          preview.type = "button";
+          preview.addEventListener("click", () => {
+            void previewArtifact(artifact);
+            $("#artifact-panel").scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          });
+          actions.append(preview);
+        }
+        const download = element("a", "", "Download");
+        download.href = artifactUrl(artifact, true);
+        download.download = "";
+        actions.append(download);
+      } else {
+        actions.append(
+          element("span", "availability-badge is-unavailable", "Unavailable"),
+        );
+      }
+      row.append(actions);
+      files.append(row);
     }
   }
 

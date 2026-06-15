@@ -2413,3 +2413,126 @@ tbody tr:last-child td {
     height: 360px;
   }
 }
+
+/* Layout extraction panel (additive feature) */
+.layout-breakpoints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.layout-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-control);
+  background: var(--app-surface-strong);
+  min-width: 120px;
+}
+
+.layout-chip strong {
+  text-transform: capitalize;
+  font-size: 0.95rem;
+}
+
+.layout-chip__width {
+  font-family: var(--app-font-mono);
+  color: var(--app-text);
+  font-size: 0.85rem;
+}
+
+.layout-chip__meta {
+  font-size: 0.72rem;
+  color: var(--app-text-muted);
+}
+
+.layout-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.layout-wireframe {
+  margin: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-card);
+  overflow: hidden;
+  background: #fff;
+}
+
+.layout-wireframe figcaption {
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  color: var(--app-text-muted);
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface-strong);
+}
+
+.layout-wireframe__frame {
+  max-height: 520px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.layout-wireframe__frame img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.layout-files {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.layout-file {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-control);
+  background: var(--app-surface-strong);
+}
+
+.layout-file strong {
+  font-size: 0.9rem;
+}
+
+.layout-file span {
+  grid-column: 1;
+  font-size: 0.75rem;
+  color: var(--app-text-muted);
+}
+
+.layout-file__actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.layout-file__actions button,
+.layout-file__actions a {
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border-radius: var(--app-radius-pill);
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-bg);
+  color: var(--app-text);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .layout-body {
+    grid-template-columns: 1fr;
+  }
+}

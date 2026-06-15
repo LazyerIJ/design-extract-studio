@@ -5,7 +5,7 @@ import { validateJobId, validateJobInput } from "../lib/validation.mjs";
 test("validateJobInput applies safe defaults and normalizes the URL", () => {
   assert.deepEqual(validateJobInput({ url: "https://example.com/path" }), {
     url: "https://example.com/path",
-    options: { dark: true, screenshots: true, depth: 1, wait: 1500 },
+    options: { dark: true, screenshots: true, depth: 1, wait: 1500, layout: true },
   });
 });
 
@@ -16,6 +16,18 @@ test("validateJobInput accepts bounded extraction options", () => {
   });
   assert.equal(value.options.depth, 0);
   assert.equal(value.options.wait, 30000);
+});
+
+test("validateJobInput controls the layout option", () => {
+  assert.equal(validateJobInput({ url: "https://example.com" }).options.layout, true);
+  assert.equal(
+    validateJobInput({ url: "https://example.com", options: { layout: false } }).options.layout,
+    false,
+  );
+  assert.throws(
+    () => validateJobInput({ url: "https://example.com", options: { layout: "no" } }),
+    (error) => error.code === "VALIDATION_ERROR" && error.field === "options.layout",
+  );
 });
 
 for (const [name, body, field] of [
