@@ -27,14 +27,22 @@ test("FIFO queue runs only one extraction at a time", async (t) => {
   const first = await manager.create(INPUT);
   const second = await manager.create(INPUT);
 
-  await waitForJob(manager, first.id, (job) => job.status === "running");
+  await waitForJob(
+    manager,
+    first.id,
+    (job) => job.status === "running" && releases.length === 1,
+  );
   await new Promise((resolve) => setTimeout(resolve, 30));
   assert.equal(starts.length, 1);
   assert.equal((await manager.get(second.id)).status, "queued");
 
   releases.shift()();
   await waitForJob(manager, first.id, (job) => job.status === "succeeded");
-  await waitForJob(manager, second.id, (job) => job.status === "running");
+  await waitForJob(
+    manager,
+    second.id,
+    (job) => job.status === "running" && releases.length === 1,
+  );
   assert.deepEqual(starts, [first.id, second.id]);
   releases.shift()();
   await waitForJob(manager, second.id, (job) => job.status === "succeeded");

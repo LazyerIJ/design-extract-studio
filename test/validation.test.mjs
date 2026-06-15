@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateJobId, validateJobInput } from "../lib/validation.mjs";
+import {
+  validateAnalyzeInput,
+  validateApplicationId,
+  validateApplicationInput,
+  validateJobId,
+  validateJobInput,
+} from "../lib/validation.mjs";
 
 test("validateJobInput applies safe defaults and normalizes the URL", () => {
   assert.deepEqual(validateJobInput({ url: "https://example.com/path" }), {
@@ -48,4 +54,39 @@ for (const [name, body, field] of [
 test("validateJobId rejects path-like identifiers", () => {
   assert.throws(() => validateJobId("../job.json"), /Invalid job id/);
   assert.equal(validateJobId("mabc1234-123456789abc"), "mabc1234-123456789abc");
+});
+
+test("application validation requires an absolute-path-shaped value, mode, and confirmation", () => {
+  assert.deepEqual(
+    validateAnalyzeInput({ targetPath: "/tmp/project" }),
+    { targetPath: "/tmp/project" },
+  );
+  assert.deepEqual(
+    validateApplicationInput({
+      targetPath: "/tmp/project",
+      mode: "safe",
+      confirmed: true,
+    }),
+    { targetPath: "/tmp/project", mode: "safe", confirmed: true },
+  );
+  assert.throws(
+    () => validateApplicationInput({
+      targetPath: "/tmp/project",
+      mode: "safe",
+      confirmed: false,
+    }),
+    (error) => error.field === "confirmed",
+  );
+  assert.throws(
+    () => validateApplicationInput({
+      targetPath: "/tmp/project",
+      mode: "unsafe",
+      confirmed: true,
+    }),
+    (error) => error.field === "mode",
+  );
+  assert.equal(
+    validateApplicationId("aabc1234-123456789abc"),
+    "aabc1234-123456789abc",
+  );
 });
