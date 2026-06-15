@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apply Design System"
+  short_description: "Apply extracted design artifacts to a web project safely"
+  default_prompt: "Use $apply-design-system to analyze this web project, apply selected design artifacts safely, and verify the result."

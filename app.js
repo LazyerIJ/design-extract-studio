@@ -168,6 +168,10 @@
     artifacts: [],
     artifactFilter: "",
     artifactCategory: "all",
+    applyEnabled: false,
+    applyAnalysis: null,
+    currentApplication: null,
+    applicationPollTimer: null,
     eventSource: null,
     pollTimer: null,
     durationTimer: null,
@@ -185,6 +189,14 @@
   function announce(message) {
     const region = $("#form-status");
     if (!region) return;
+    region.textContent = "";
+    window.setTimeout(() => {
+      region.textContent = message;
+    }, 20);
+  }
+
+  function announceApply(message) {
+    const region = $("#apply-live");
     region.textContent = "";
     window.setTimeout(() => {
       region.textContent = message;
@@ -260,6 +272,7 @@
   async function loadHealth() {
     try {
       const health = await api("/api/health");
+      state.applyEnabled = health.applyEnabled === true;
       $("#server-status").className = "status-pill";
       $("#server-status").lastChild.textContent = " Online";
       $("#health-badge").textContent = "✓";
@@ -268,7 +281,9 @@
       $("#health-running").textContent = health.queue.running;
       $("#health-queued").textContent = health.queue.queued;
       $("#health-codex").textContent = health.codexAnalysis ? "On" : "Off";
+      if (state.selectedJob) renderSelectedJob();
     } catch {
+      state.applyEnabled = false;
       $("#server-status").className = "status-pill status-pill--error";
       $("#server-status").lastChild.textContent = " Offline";
       $("#health-badge").textContent = "!";
@@ -349,6 +364,7 @@
 
   function clearSelection() {
     closeEventStream();
+    stopApplicationPolling();
     state.selectedId = null;
     state.selectedJob = null;
     state.artifacts = [];
@@ -356,6 +372,7 @@
     $("#artifact-location").hidden = true;
     $("#download-all").hidden = true;
     $("#download-all-secondary").hidden = true;
+    $("#apply-panel").hidden = true;
     $("#detail-empty").hidden = false;
     $("#detail-content").hidden = true;
   }
@@ -365,6 +382,10 @@
     state.selectedId = id;
     state.artifactFilter = "";
     state.artifactCategory = "all";
+    state.applyAnalysis = null;
+    state.currentApplication = null;
+    stopApplicationPolling();
+    resetApplyReport();
     $("#artifact-filter").value = "";
     syncArtifactCategoryButtons();
     renderJobList();
@@ -378,6 +399,7 @@
       renderSelectedJob();
       connectEventStream(id);
       await loadArtifacts(id);
+      await loadApplications(id);
     } catch (error) {
       $("#job-log").textContent = `Failed to load job: ${error.message}`;
     }
@@ -431,6 +453,7 @@
     $("#artifact-location").hidden = !showPath;
     $("#artifact-path").textContent = showPath ? job.artifactPath : "";
     $("#results-guide").hidden = !succeeded;
+    $("#apply-panel").hidden = !(succeeded && state.applyEnabled);
     if (succeeded) renderUsageGuide();
 
     renderSummary(job);
@@ -589,6 +612,269 @@
       next.append(element("strong", "", "다음 행동"), document.createTextNode(` ${guide.next}`));
       card.append(files, next);
       grid.append(card);
+    }
+  }
+
+  function resetApplyReport() {
+    state.applyAnalysis = null;
+    $("#compatibility-report").hidden = true;
+    $("#apply-confirmed").checked = false;
+    $("#start-application").disabled = true;
+    $("#application-run").hidden = true;
+    $("#application-result").hidden = true;
+    $("#application-log").textContent = "적용 로그가 여기에 표시됩니다.";
+  }
+
+  function fillList(selector, values, emptyText) {
+    const list = $(selector);
+    list.replaceChildren();
+    const items = values?.length ? values : [emptyText];
+    for (const value of items) list.append(element("li", "", value));
+  }
+
+  function renderCompatibility(bundle) {
+    state.applyAnalysis = bundle;
+    const { analysis, compatibility, plan } = bundle;
+    $("#compatibility-report").hidden = false;
+    const status = $("#compatibility-status");
+    status.textContent = compatibility.status;
+    status.className =
+      compatibility.status === "supported"
+        ? "status-label status-label--succeeded"
+        : compatibility.status === "partial"
+          ? "status-label status-label--running"
+          : "status-label status-label--failed";
+    $("#compatibility-title").textContent =
+      compatibility.safeInstall
+        ? "Safe install 준비 완료"
+        : "현재 상태에서는 수정할 수 없습니다";
+    $("#compatibility-target").textContent = analysis.targetPath;
+    $("#apply-framework").textContent = analysis.framework.name;
+    $("#apply-css-entry").textContent =
+      analysis.css.entry ?? `Unresolved (${analysis.css.confidence})`;
+    $("#apply-package-manager").textContent =
+      analysis.packageManager.name ?? "None";
+    $("#apply-git").textContent = analysis.git.clean
+      ? "Clean"
+      : `${analysis.git.dirtyEntries.length} changes`;
+    $("#apply-tailwind").textContent = analysis.tailwind.detected
+      ? `Detected${analysis.tailwind.version ? ` · v${analysis.tailwind.version}` : ""}`
+      : "Not detected";
+    $("#apply-shadcn").textContent = analysis.shadcn.detected
+      ? "Detected"
+      : "Not detected";
+    fillList("#apply-blockers", compatibility.blockers, "없음");
+    fillList("#apply-warnings", compatibility.warnings, "없음");
+    fillList(
+      "#apply-plan",
+      plan.changes.map((change) =>
+        change.action === "copy"
+          ? `Copy ${change.source} → ${change.target}`
+          : `Update imports in ${change.target}`,
+      ),
+      "적용 계획 없음",
+    );
+    updateApplyButton();
+  }
+
+  function updateApplyButton() {
+    const ready =
+      Boolean(state.applyAnalysis?.compatibility?.safeInstall) &&
+      $("#apply-confirmed").checked &&
+      !state.currentApplication;
+    $("#start-application").disabled = !ready;
+  }
+
+  async function analyzeTarget() {
+    if (!state.selectedId) return;
+    const target = $("#apply-target");
+    const button = $("#analyze-project");
+    button.disabled = true;
+    button.textContent = "Analyzing…";
+    try {
+      const bundle = await api(
+        `/api/jobs/${encodeURIComponent(state.selectedId)}/applications/analyze`,
+        {
+          method: "POST",
+          body: JSON.stringify({ targetPath: target.value.trim() }),
+        },
+      );
+      target.removeAttribute("aria-invalid");
+      renderCompatibility(bundle);
+      announceApply(
+        bundle.compatibility.safeInstall
+          ? "프로젝트 분석과 적용 계획을 완료했습니다."
+          : "프로젝트를 수정할 수 없는 blocker가 있습니다.",
+      );
+    } catch (error) {
+      state.applyAnalysis = null;
+      target.setAttribute("aria-invalid", "true");
+      $("#compatibility-report").hidden = true;
+      announceApply(`프로젝트 분석 실패: ${error.message}`);
+    } finally {
+      button.disabled = false;
+      button.textContent = "Analyze";
+      updateApplyButton();
+    }
+  }
+
+  function applicationActive(application) {
+    return !["succeeded", "failed", "cancelled"].includes(application?.status);
+  }
+
+  function renderApplication(application) {
+    const active = applicationActive(application);
+    state.currentApplication = active ? application : null;
+    $("#application-run").hidden = false;
+    $("#application-stage").textContent = application.status;
+    $("#application-message").textContent =
+      application.error?.message ||
+      application.progress?.message ||
+      application.status;
+    const percent = application.progress?.percent ?? 0;
+    $("#application-percent").textContent = `${percent}%`;
+    $("#application-progress").setAttribute("aria-valuenow", String(percent));
+    $("#application-progress span").style.width = `${percent}%`;
+    $("#application-log").textContent =
+      application.recentLog || "적용 로그를 기다리는 중입니다.";
+    $("#application-log").scrollTop = $("#application-log").scrollHeight;
+    $("#cancel-application").hidden = !active;
+    $("#start-application").disabled = active ||
+      !state.applyAnalysis?.compatibility?.safeInstall ||
+      !$("#apply-confirmed").checked;
+
+    const result = application.result;
+    $("#application-result").hidden = !result;
+    if (result) {
+      fillList(
+        "#application-files",
+        result.changedFiles,
+        "Git 변경 파일 없음",
+      );
+      const commandResults = result.verification?.commands ?? [];
+      fillList(
+        "#application-verification",
+        [
+          `Static manifest/import check: ${result.verification?.static?.ok ? "Pass" : "Fail"}`,
+          ...commandResults.map(
+            (command) => `${command.script}: exit ${command.exitCode}`,
+          ),
+        ],
+        "검증 결과 없음",
+      );
+    }
+    if (!active) {
+      state.applyAnalysis = null;
+      $("#apply-confirmed").checked = false;
+      $("#start-application").disabled = true;
+      stopApplicationPolling();
+      announceApply(
+        application.status === "succeeded"
+          ? "디자인 시스템 적용과 검증을 완료했습니다."
+          : `적용이 ${application.status} 상태로 종료됐습니다.`,
+      );
+    }
+  }
+
+  function stopApplicationPolling() {
+    clearTimeout(state.applicationPollTimer);
+    state.applicationPollTimer = null;
+  }
+
+  async function pollApplication(id) {
+    stopApplicationPolling();
+    try {
+      const data = await api(`/api/applications/${encodeURIComponent(id)}`);
+      if (state.selectedJob?.id !== data.application.jobId) return;
+      renderApplication(data.application);
+      if (applicationActive(data.application)) {
+        state.applicationPollTimer = window.setTimeout(
+          () => void pollApplication(id),
+          800,
+        );
+      }
+    } catch (error) {
+      announceApply(`적용 상태 연결 오류: ${error.message}. 재연결합니다.`);
+      state.applicationPollTimer = window.setTimeout(
+        () => void pollApplication(id),
+        1800,
+      );
+    }
+  }
+
+  async function loadApplications(jobId) {
+    if (!state.applyEnabled) return;
+    try {
+      const data = await api(
+        `/api/jobs/${encodeURIComponent(jobId)}/applications`,
+      );
+      if (state.selectedId !== jobId || !data.applications[0]) return;
+      const detail = await api(
+        `/api/applications/${encodeURIComponent(data.applications[0].id)}`,
+      );
+      if (state.selectedId !== jobId) return;
+      const latest = detail.application;
+      $("#apply-target").value = latest.targetPath ?? "";
+      if (latest.analysis && latest.compatibility && latest.plan) {
+        renderCompatibility({
+          analysis: latest.analysis,
+          compatibility: latest.compatibility,
+          plan: latest.plan,
+        });
+      }
+      renderApplication(latest);
+      if (applicationActive(latest)) void pollApplication(latest.id);
+    } catch {
+      // The extraction UI remains usable if apply history cannot load.
+    }
+  }
+
+  async function startApplication(event) {
+    event.preventDefault();
+    if (!state.selectedId || !state.applyAnalysis) return;
+    const mode =
+      document.querySelector('input[name="applyMode"]:checked')?.value ?? "safe";
+    const button = $("#start-application");
+    button.disabled = true;
+    button.textContent = "Starting…";
+    try {
+      const data = await api(
+        `/api/jobs/${encodeURIComponent(state.selectedId)}/applications`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            targetPath: $("#apply-target").value.trim(),
+            mode,
+            confirmed: $("#apply-confirmed").checked,
+          }),
+        },
+      );
+      renderApplication(data.application);
+      announceApply("비동기 적용 작업을 시작했습니다.");
+      void pollApplication(data.application.id);
+    } catch (error) {
+      announceApply(`적용 작업을 시작하지 못했습니다: ${error.message}`);
+    } finally {
+      button.textContent = "Apply design system";
+      updateApplyButton();
+    }
+  }
+
+  async function cancelApplication() {
+    const id = state.currentApplication?.id;
+    if (!id) return;
+    $("#cancel-application").disabled = true;
+    try {
+      const data = await api(
+        `/api/applications/${encodeURIComponent(id)}/cancel`,
+        { method: "POST" },
+      );
+      renderApplication(data.application);
+      announceApply("적용 취소를 요청했습니다.");
+    } catch (error) {
+      announceApply(`적용을 취소하지 못했습니다: ${error.message}`);
+    } finally {
+      $("#cancel-application").disabled = false;
     }
   }
 
@@ -1053,6 +1339,23 @@
     $("#copy-artifact-path").addEventListener("click", () =>
       void copyArtifactPath(),
     );
+    $("#analyze-project").addEventListener("click", () => void analyzeTarget());
+    $("#apply-form").addEventListener("submit", startApplication);
+    $("#apply-confirmed").addEventListener("change", updateApplyButton);
+    $("#cancel-application").addEventListener("click", () =>
+      void cancelApplication(),
+    );
+    $("#apply-target").addEventListener("input", () => {
+      state.applyAnalysis = null;
+      $("#compatibility-report").hidden = true;
+      $("#apply-confirmed").checked = false;
+      if (!state.currentApplication) {
+        $("#application-run").hidden = true;
+        $("#application-result").hidden = true;
+        $("#application-log").textContent = "적용 로그가 여기에 표시됩니다.";
+      }
+      updateApplyButton();
+    });
     $("#artifact-filter").addEventListener("input", (event) => {
       state.artifactFilter = event.target.value;
       renderArtifacts();
@@ -1064,7 +1367,10 @@
       syncArtifactCategoryButtons();
       renderArtifacts();
     });
-    window.addEventListener("beforeunload", closeEventStream);
+    window.addEventListener("beforeunload", () => {
+      closeEventStream();
+      stopApplicationPolling();
+    });
   }
 
   async function initialize() {

@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.mjs",
     "dev": "node --env-file-if-exists=.env --watch server.mjs",
-    "test": "node --test --test-reporter=spec"
+    "test": "node --test --test-reporter=spec",
+    "apply:analyze": "node .agents/skills/apply-design-system/scripts/analyze.mjs",
+    "apply:install": "node .agents/skills/apply-design-system/scripts/apply.mjs",
+    "apply:verify": "node .agents/skills/apply-design-system/scripts/verify.mjs"
   },
   "engines": {
     "node": ">=22.9"

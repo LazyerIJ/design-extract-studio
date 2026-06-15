@@ -77,6 +77,9 @@ PID와 로그는 다음 위치에 기록됩니다.
 .server/server.log
 ```
 
+`server.mjs`가 시작할 때 `.server/server.pid`를 원자적으로 갱신하고, 같은
+프로세스가 정상 종료할 때만 제거합니다.
+
 상태 확인과 종료:
 
 ```bash
@@ -99,6 +102,8 @@ launchctl remove com.designextract.studio
    사용합니다.
 8. 개별 파일 또는 모든 regular artifact를 안전한 `tar.gz`로 다운로드합니다.
 9. loopback bind에서는 실제 artifact 폴더 경로를 확인하고 복사할 수 있습니다.
+10. succeeded 작업의 **Apply to project**에서 로컬 Git 프로젝트를 분석하고,
+    계획 확인 후 Safe install 또는 선택적 AI assisted 적용을 실행합니다.
 
 ## 구조
 
@@ -114,6 +119,12 @@ launchctl remove com.designextract.studio
 | `lib/artifact-classification.mjs` | 파일명을 유형, 쉬운 용도, 추천 사용자와 UI 필터로 분류합니다. |
 | `lib/archive.mjs` | regular file만 USTAR로 스트리밍하고 내장 gzip으로 압축합니다. |
 | `lib/summary.mjs` | design-language Markdown의 핵심 지표를 파싱합니다. |
+| `lib/project-analysis.mjs` | target realpath, Git, framework, CSS entry, Tailwind/shadcn과 검증 script를 읽기 전용 분석합니다. |
+| `lib/design-apply.mjs` | 관리 artifact 복사, idempotent CSS import, backup/manifest, Codex adapter와 verify를 구현합니다. |
+| `lib/application-manager.mjs` | 비동기 적용 상태, target lock, 취소, 로그, 재시작 복구와 최종 검증을 관리합니다. |
+| `lib/application-store.mjs` | `applications/<id>`에 적용 상태·로그·분석·계획·결과를 원자적으로 저장합니다. |
+| `AGENTS.md`, `APPLY_SPEC.md` | 저장소 안전 규칙과 analyze → compatibility → plan → apply → verify 계약입니다. |
+| `.agents/skills/apply-design-system/` | `$apply-design-system` repo skill과 JSON CLI entrypoint입니다. |
 | `index.html`, `app.css`, `app.js` | 접근 가능한 반응형 UI와 실제 API/SSE 클라이언트입니다. |
 | `test/` | 입력, 큐, 취소, 복구, traversal, MIME, summary와 API 테스트입니다. |
 | `test-fixture/`, `scripts/fixture-server.mjs` | 실제 designlang E2E용 빠른 로컬 페이지입니다. |
@@ -151,10 +162,83 @@ npx --yes designlang <url> --system-chrome --quiet --no-history \
 | `GET` | `/api/jobs/:id/artifacts` | 산출물 목록 |
 | `GET` | `/api/jobs/:id/artifacts-download` | 모든 안전한 regular file의 `tar.gz` 다운로드 |
 | `GET` | `/api/jobs/:id/artifacts/<path>` | 안전한 미리보기 또는 `?download=1` 다운로드 |
+| `POST` | `/api/jobs/:id/applications/analyze` | target 프로젝트 읽기 전용 분석과 compatibility/plan |
+| `POST` | `/api/jobs/:id/applications` | 확인된 비동기 Safe/AI 적용 작업 생성 |
+| `GET` | `/api/jobs/:id/applications` | extraction별 적용 이력 |
+| `GET` | `/api/applications/:id` | 적용 상태, 로그, 결과와 diff 요약 |
+| `GET` | `/api/applications/:id/events` | 적용 상태와 로그 SSE |
+| `POST` | `/api/applications/:id/cancel` | 실행 중 적용 작업 취소 |
 
 API 응답은 `Cache-Control: no-store`를 사용합니다.
 `GET /api/jobs/:id`의 `artifactPath`는 서버 bind가 `127.0.0.1`, `::1`,
 `localhost` 중 하나이고 작업이 succeeded일 때만 포함됩니다.
+프로젝트 분석·적용 API와 UI도 같은 loopback 조건에서만 활성화되며
+non-loopback bind에서는 `403 APPLY_LOCALHOST_ONLY`로 거부합니다.
+
+## 로컬 프로젝트 적용
+
+상세 계약은 [`APPLY_SPEC.md`](./APPLY_SPEC.md)에 있습니다. 지원 흐름은 항상
+`analyze → compatibility → plan → apply → verify` 순서입니다.
+
+1. succeeded extraction 상세에서 대상 Git 프로젝트의 절대 경로를 입력합니다.
+2. **Analyze**로 framework, package manager, CSS entry, Tailwind/shadcn,
+   worktree 상태와 build/lint/test script를 확인합니다.
+3. compatibility와 파일별 변경 계획을 확인합니다.
+4. 명시적 확인 체크 후 Safe install 또는 AI assisted를 시작합니다.
+5. 비동기 진행률과 로그를 확인하고 필요하면 취소합니다.
+6. manifest/hash/import와 사용 가능한 build/lint/test가 모두 통과해야만
+   `succeeded`가 됩니다.
+
+Safe install은 추출 artifact 중 `variables.css`, `reset.css`, `motion.css`,
+theme, tokens와 design report를 target의 `.design-system/artifacts/`에
+복사합니다. 분석으로 하나만 확정된 CSS entry에 관리 marker import를
+idempotent하게 추가하고 `.design-system/manifest.json`과 application별
+backup을 남깁니다.
+
+구조가 불명확하거나 CSS entry가 ambiguous인 프로젝트, dirty worktree,
+Git이 아닌 디렉터리, symlink target, 이 Studio 자체·상위 디렉터리,
+filesystem root와 home 자체에는 쓰지 않습니다. 이전 manifest가 소유하지
+않은 `.design-system` 파일도 덮어쓰지 않습니다.
+
+CLI에서도 같은 엔진을 직접 실행할 수 있습니다.
+
+```bash
+npm run apply:analyze -- \
+  --target /absolute/path/to/project \
+  --artifacts /absolute/path/to/job/artifacts
+
+npm run apply:install -- \
+  --target /absolute/path/to/project \
+  --artifacts /absolute/path/to/job/artifacts \
+  --mode safe \
+  --confirmed
+
+npm run apply:verify -- --target /absolute/path/to/project
+```
+
+모든 CLI 결과는 stdout JSON이며 진행 로그는 stderr입니다.
+
+### AI assisted
+
+AI assisted는 Safe install 후 기존 컴포넌트 적응이 필요할 때만 선택합니다.
+clean worktree와 실행·인증된 Codex CLI가 필요합니다. 서버는 target cwd에서
+다음 제한으로 실행합니다.
+
+```text
+codex exec --sandbox workspace-write -c approval_policy="never" \
+  --ephemeral --color never -C <target>
+```
+
+고정 prompt는 `AGENTS.md`, `APPLY_SPEC.md`, 분석 JSON과 선택 artifact
+디렉터리뿐 아니라 repo skill `SKILL.md`와 analyze/apply/verify script의 절대
+경로를 명시합니다. target cwd에서는 이 repo skill이 자동 discovery되지 않기
+때문입니다. target/artifact 내용은 untrusted data로 취급합니다.
+`danger-full-access`, package 설치, lockfile·Git history 변경은 허용하지
+않습니다. Codex가 종료되어도 정적 검증과 가능한 build/lint/test가 실패하면
+적용 작업은 성공 처리되지 않습니다. Codex나 target script가 `package.json`
+또는 npm/yarn/pnpm/bun/deno lockfile을 변경한 경우도 검증 실패로 처리합니다.
+Safe install이 반환한 manifest hash도 같은 application/CLI verify에 전달하므로,
+Codex가 manifest를 바꿔 검증 기준을 재정의할 수 없습니다.
 
 ## 산출물 활용 가이드
 
@@ -182,6 +266,13 @@ jobs/<job-id>/
 ├── job.json
 ├── job.log
 └── artifacts/
+
+applications/<application-id>/
+├── application.json
+├── application.log
+├── analysis.json
+├── plan.json
+└── result.json
 ```
 
 `job.json`에는 상태, PID, 시간, exit code, 진행률, integrity, summary가
@@ -228,9 +319,14 @@ approval never, 고정 prompt로 실행해 `analysis.md`를 생성합니다. URL
 ## 보안
 
 - 기본 bind는 `127.0.0.1`이며 외부 공개 서버 용도가 아닙니다.
+- 상태를 변경하는 API는 loopback Host와 동일 출처 Origin만 허용하며, JSON
+  본문은 `application/json` 요청만 처리합니다.
 - URL은 `http:`와 `https:`만 허용하고 credentials를 거부합니다.
 - request body는 16 KiB로 제한합니다.
 - 자식 프로세스는 shell 없이 고정 command와 argument 배열로 실행합니다.
+- target의 build/lint/test와 Codex는 `PATH`, `HOME`, 선택적 `CODEX_HOME`,
+  `TMPDIR`, locale 등 실행·saved auth에 필요한 최소 환경만 받습니다. 서버의 `OPENAI_*`,
+  `GITHUB_*`, `AWS_*`, `NPM_*` 등 provider credential은 상속하지 않습니다.
 - artifact 경로는 decode, root containment, symlink와 traversal을 검사합니다.
 - 전체 다운로드는 artifact root 아래의 regular file만 포함하고 symlink,
   절대 경로, `..`, 지나치게 긴 tar 경로를 제외하거나 거부합니다.
@@ -270,9 +366,44 @@ Chrome과 기존 npx 캐시를 사용합니다.
 실행 중 자식 프로세스는 서버 종료 시 TERM 후 필요하면 KILL됩니다. 재시작 때
 해당 작업은 데이터 손상을 숨기지 않도록 `INTERRUPTED` 실패로 표시됩니다.
 
+**Apply가 unsupported로 표시됨**
+
+대상은 Git 저장소여야 하며 worktree가 clean이어야 합니다. supported framework와
+단 하나의 high-confidence CSS entry, 추출 artifact의 `variables.css`가
+필요합니다. blocker가 있으면 파일을 수정하지 않습니다.
+
+**AI assisted preflight 실패**
+
+`codex --version`과 `codex login status`를 target 적용 전에 확인합니다.
+Codex가 없거나 인증되지 않았으면 Safe install을 사용하거나 Codex 인증을
+완료합니다. Safe install은 Codex에 의존하지 않습니다.
+
+**적용 후 검증 실패**
+
+`.design-system/manifest.json`의 hash와 CSS marker/import를 먼저 확인합니다.
+그 다음 target `package.json`에 있는 build, lint, test를 순서대로 실행합니다.
+실패한 command와 최근 출력은 application 로그와 결과에 남으며 성공 상태로
+승격되지 않습니다.
+
 ## 검증 기록
 
-- `npm test`: 22개 단위·통합 테스트 통과
+- `npm test`: 37개 단위·통합 테스트 통과
+- apply analysis: Next/Vite/React/HTML/Vue/Svelte, CSS entry, Tailwind
+  v3/v4, shadcn, Git clean/dirty, forbidden/symlink target 검증
+- Safe install: managed artifact, atomic manifest/backup, idempotent import,
+  stale analysis, overwrite/symlink 방어와 build/lint/test 실패 검증
+- application jobs: 성공, target 동시 실행 잠금, 취소, 재시작
+  `INTERRUPTED`, persistence와 mock Codex sandbox argument 검증
+- apply API: localhost analyze/create/history/detail, non-loopback 403 검증
+- process environment: `CODEX_HOME` saved-auth 경로 유지와 provider credential
+  미상속 검증
+- repo skill: quick validator `Skill is valid!`, `agents/openai.yaml`의
+  literal `$apply-design-system` 확인
+- 실제 Safe install CLI E2E: 성공 extraction의 53개 artifact에서 6개 지원
+  role 선택, marker 1개, manifest hash/import, build/lint/test exit 0 확인
+- 실제 Codex forward test: 별도 작은 Git fixture에서 `workspace-write`,
+  repo `SKILL.md` 절대 경로 읽기, 정확한 `Skill contract read:` 증거,
+  CSS 적응과 후속 static verification 통과
 - classification: prefix/중첩 경로, 사용자·용도 필터 분류 검증
 - bundle: gzip 해제, tar 엔트리/내용, symlink 제외, MIME과
   `Content-Disposition` 검증
@@ -280,8 +411,9 @@ Chrome과 기존 npx 캐시를 사용합니다.
 - 실제 fixture extraction: succeeded, 53 files, JSON 15/15, PNG 11,
   empty 0, integrity pass
 - summary: design score 98/A, WCAG 100%, spacing base 2px
-- 브라우저: 1440x1000과 390x844 모두 overflow 0
-- 콘솔 오류, page error, 404, request failure: 0
+- 브라우저: 1440x1000과 390x844 모두 overflow 0, 실제 Safe apply 성공과
+  느린 build 단계 취소, 이력 compatibility/plan/log/result 복원 확인
+- 콘솔 오류, page error, HTTP 4xx/5xx, 비취소 request failure: 0
 - 목적 가이드 10개, Start here 3개 동적 매칭, 검색+사용자 필터,
   quick preview/download, Download all, Copy path 검증 완료
 - UI에서 받은 bundle을 시스템 `tar -tzf`로 열어 53개 파일과
@@ -289,5 +421,5 @@ Chrome과 기존 npx 캐시를 사용합니다.
 - form submit/cancel, refresh, 이력, 상세, 모바일 메뉴, Tab
   focus-visible 3px outline, reduced motion 검증 완료
 - 스크린샷:
-  `/private/tmp/designlang-guide-desktop.png`,
-  `/private/tmp/designlang-guide-mobile.png`
+  `/private/tmp/design-extract-studio-desktop.png`,
+  `/private/tmp/design-extract-studio-mobile.png`
