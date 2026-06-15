@@ -17,6 +17,7 @@ const CAPTURE = {
       nodeCount: 2,
       tree: {
         tag: "main",
+        dom: "main",
         rect: { x: 0, y: 0, w: 1440, h: 1800 },
         display: "grid",
         grid: { columns: 3, template: "1fr 1fr 1fr", gap: "24px", justify: "normal" },
@@ -24,6 +25,7 @@ const CAPTURE = {
         children: [
           {
             tag: "section",
+            dom: "main>section",
             rect: { x: 0, y: 0, w: 480, h: 300 },
             display: "flex",
             flex: { direction: "row", wrap: "nowrap", justify: "center", align: "center", gap: "8px" },
@@ -40,6 +42,7 @@ const CAPTURE = {
       nodeCount: 2,
       tree: {
         tag: "main",
+        dom: "main",
         rect: { x: 0, y: 0, w: 390, h: 2400 },
         display: "grid",
         grid: { columns: 1, template: "1fr", gap: "16px", justify: "normal" },
@@ -47,6 +50,7 @@ const CAPTURE = {
         children: [
           {
             tag: "section",
+            dom: "main>section",
             rect: { x: 0, y: 0, w: 390, h: 300 },
             display: "flex",
             flex: { direction: "column", wrap: "nowrap", justify: "center", align: "center", gap: "8px" },
@@ -72,11 +76,116 @@ test("generateLayoutArtifacts emits the four layout files", () => {
 
 test("layout.css encodes the desktop base and a responsive override", () => {
   const css = generateLayoutArtifacts(CAPTURE, "example-com")["example-com-layout.css"];
-  assert.match(css, /display: grid; grid-template-columns: repeat\(3, 1fr\)/);
+  // The real computed template is preserved verbatim, not flattened to repeat().
+  assert.match(css, /display: grid; grid-template-columns: 1fr 1fr 1fr/);
+  assert.doesNotMatch(css, /repeat\(/);
   assert.match(css, /@media \(max-width: 390px\)/);
   // grid collapses 3col -> 1col and flex row -> column at mobile
-  assert.match(css, /grid-template-columns: 1fr/);
+  assert.match(css, /grid-template-columns: 1fr;/);
   assert.match(css, /flex-direction: column/);
+});
+
+test("asymmetric grid tracks are preserved, not flattened to 1fr columns", () => {
+  const capture = {
+    generatedAt: "2026-06-15T00:00:00.000Z",
+    url: "https://example.com/",
+    breakpoints: {
+      desktop: {
+        width: 1440,
+        height: 900,
+        scrollHeight: 1000,
+        tree: {
+          tag: "main",
+          dom: "main",
+          // 240px sidebar + fluid content — the exact shape the old code
+          // destroyed by emitting repeat(2, 1fr).
+          grid: { columns: 2, template: "240px minmax(0, 760px)", gap: "24px" },
+          rect: { x: 0, y: 0, w: 1440, h: 1000 },
+          children: [],
+        },
+      },
+    },
+  };
+  const css = generateLayoutArtifacts(capture, "site")["site-layout.css"];
+  assert.match(css, /grid-template-columns: 240px minmax\(0, 760px\)/);
+  assert.doesNotMatch(css, /repeat\(2, 1fr\)/);
+});
+
+test("cross-breakpoint matching uses DOM identity, never filtered position", () => {
+  // Desktop: a sidebar grid + a content flex side by side. Mobile drops the
+  // sidebar entirely, so the content node slides into position 0. Position-based
+  // matching would graft the content's rule onto the sidebar; DOM matching must
+  // instead leave the unmatched sidebar alone and report it.
+  const capture = {
+    generatedAt: "2026-06-15T00:00:00.000Z",
+    url: "https://example.com/",
+    breakpoints: {
+      desktop: {
+        width: 1440,
+        height: 900,
+        scrollHeight: 1000,
+        tree: {
+          tag: "main",
+          dom: "main",
+          grid: { columns: 2, template: "240px 1fr", gap: "24px" },
+          rect: { x: 0, y: 0, w: 1440, h: 1000 },
+          children: [
+            {
+              tag: "aside",
+              dom: "main>aside.sidebar",
+              cls: ["sidebar"],
+              grid: { columns: 1, template: "1fr", gap: "8px" },
+              rect: { x: 0, y: 0, w: 240, h: 800 },
+              children: [],
+            },
+            {
+              tag: "section",
+              dom: "main>section.content",
+              cls: ["content"],
+              flex: { direction: "row", gap: "16px" },
+              rect: { x: 264, y: 0, w: 1176, h: 800 },
+              children: [],
+            },
+          ],
+        },
+      },
+      mobile: {
+        width: 390,
+        height: 844,
+        scrollHeight: 1400,
+        tree: {
+          tag: "main",
+          dom: "main",
+          grid: { columns: 1, template: "1fr", gap: "12px" },
+          rect: { x: 0, y: 0, w: 390, h: 1400 },
+          children: [
+            // sidebar is gone; content is now the first (and only) child
+            {
+              tag: "section",
+              dom: "main>section.content",
+              cls: ["content"],
+              flex: { direction: "column", gap: "16px" },
+              rect: { x: 0, y: 0, w: 390, h: 800 },
+              children: [],
+            },
+          ],
+        },
+      },
+    },
+  };
+  const css = generateLayoutArtifacts(capture, "site")["site-layout.css"];
+  const mobileBlock = css.slice(css.indexOf("@media (max-width: 390px)"));
+  const sidebarCls = "lyt-0-0";
+  const contentCls = "lyt-0-1";
+  // The content node really did go row -> column; that override must land.
+  assert.match(mobileBlock, new RegExp(`\\.${contentCls} \\{[^}]*flex-direction: column`));
+  // The sidebar is absent at mobile and must NOT inherit the content's flex
+  // rule (the bug). It is reported as an unmatched container instead.
+  assert.doesNotMatch(
+    mobileBlock,
+    new RegExp(`\\.${sidebarCls} \\{[^}]*flex-direction: column`),
+  );
+  assert.match(css, /limitations: \d+ tablet \+ \d+ mobile container/);
 });
 
 test("skeleton uses semantic tags and links the css", () => {

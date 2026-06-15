@@ -983,6 +983,7 @@
         options: {
           dark: $("#option-dark").checked,
           screenshots: $("#option-screenshots").checked,
+          layout: $("#option-layout").checked,
           depth: Number.parseInt($("#option-depth").value, 10),
           wait: Number.parseInt($("#option-wait").value, 10),
         },

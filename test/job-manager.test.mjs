@@ -65,6 +65,43 @@ test("queued and running jobs can be cancelled", async (t) => {
   );
 });
 
+test("cancelling during the layout phase aborts it and marks the job cancelled", async (t) => {
+  const root = await temporaryProject(t);
+  const config = testConfig(root, { enableLayoutExtraction: true });
+  const store = new JobStore(config.jobsDir);
+
+  // designlang finishes instantly; the layout pass then blocks until its signal
+  // aborts — mirroring the real Chrome/CDP run so we can prove a cancel reaches
+  // it (rather than only the already-dead designlang child).
+  let layoutSignal = null;
+  const manager = new JobManager({
+    config,
+    store,
+    runner: async () => ({ exitCode: 0 }),
+    layoutRunner: async (_job, _config, hooks) => {
+      layoutSignal = hooks.signal;
+      return await new Promise((_resolve, reject) => {
+        hooks.signal.addEventListener(
+          "abort",
+          () => reject(Object.assign(new Error("cancelled"), { code: "JOB_CANCELLED" })),
+          { once: true },
+        );
+      });
+    },
+  });
+  await manager.initialize();
+  t.after(() => manager.shutdown());
+
+  const job = await manager.create(INPUT);
+  await waitForJob(manager, job.id, (j) => j.progress.stage === "layout");
+  assert.equal(layoutSignal?.aborted, false);
+
+  await manager.cancel(job.id);
+  const cancelled = await waitForJob(manager, job.id, (j) => j.status === "cancelled");
+  assert.equal(cancelled.status, "cancelled");
+  assert.equal(layoutSignal.aborted, true);
+});
+
 test("server restart marks a formerly running job as interrupted", async (t) => {
   const root = await temporaryProject(t);
   const config = testConfig(root);

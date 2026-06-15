@@ -114,6 +114,15 @@
                 >
                 <span>Component screenshots</span>
               </label>
+              <label class="check-control">
+                <input
+                  id="option-layout"
+                  name="layout"
+                  type="checkbox"
+                  aria-describedby="option-layout-help"
+                >
+                <span>Responsive layout (+Chrome, slower)</span>
+              </label>
               <label class="number-control" for="option-depth">
                 <span>Crawl depth</span>
                 <input
@@ -143,6 +152,10 @@
             <p id="url-help" class="field-help">
               첫 실행은 npx 캐시와 Chrome 준비 때문에 느릴 수 있습니다.
               postinstall은 비활성화되고 system Chrome을 사용합니다.
+            </p>
+            <p id="option-layout-help" class="field-help">
+              반응형 레이아웃 추출은 선택 기능입니다. 켜면 데스크톱·태블릿·모바일을
+              각각 Chrome으로 탐색해 grid/flex 스켈레톤을 만들며, 그만큼 시간이 더 걸립니다.
             </p>
             <p id="form-status" class="sr-only" aria-live="polite"></p>
           </form>
