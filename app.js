@@ -244,8 +244,7 @@
       const link = el("a", "n", a.name);
       link.href = artifactUrl(job.id, a.path);
       link.target = "_blank"; link.rel = "noopener";
-      const meta = el("span", "meta", a.classification?.purpose || a.classification?.type || "");
-      info.append(link, meta);
+      info.append(link);
       row.append(cb, ico, info, el("span", "size", fmtBytes(a.size)));
       files.append(row);
     }

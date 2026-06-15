@@ -152,7 +152,6 @@ a{color:inherit}
 .file .info{min-width:0; flex:1}
 .file .n{font-size:13px; font-weight:600; color:var(--ink); text-decoration:none; word-break:break-all}
 .file a.n:hover{text-decoration:underline}
-.file .meta{font-size:11.5px; color:var(--muted); margin-top:2px}
 .file .size{font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; flex-shrink:0}
 .files-empty{padding:18px; text-align:center; color:var(--faint); font-size:13px}
 
