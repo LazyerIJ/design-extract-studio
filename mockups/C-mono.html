@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시안 C — Mono (Design Extract Studio)</title>
+<style>
+  /* ── 시안 C: 모노크롬 미니멀 (Linear/Vercel 톤) ──────────────────── */
+  :root{
+    --bg:#ffffff; --surface:#ffffff; --surface-2:#fafafa; --hover:#f4f4f5;
+    --ink:#0a0a0a; --ink-2:#3f3f46; --muted:#71717a; --faint:#a1a1aa;
+    --line:#ececec; --line-2:#e0e0e2;
+    --black:#0a0a0a;
+    --ok:#16a34a; --run:#2563eb; --warn:#d97706;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:Pretendard,Inter,-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased;
+    letter-spacing:-.01em;
+    min-height:100vh;
+  }
+  /* 상단 슬림 바 */
+  .topbar{position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 24px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.82); backdrop-filter:blur(10px)}
+  .brand{display:flex; align-items:center; gap:9px}
+  .brand .logo{width:26px; height:26px; border-radius:7px; background:var(--black); color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px}
+  .brand b{font-size:15px; letter-spacing:-.3px}
+  .brand .ver{font-size:10px; color:var(--faint); margin-left:1px}
+  .topbar .right{display:flex; align-items:center; gap:12px; font-size:12px; color:var(--muted)}
+  .pill{display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:11.5px; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--line); padding:4px 9px; border-radius:999px}
+  .dot{width:6px; height:6px; border-radius:50%; background:var(--ok)}
+  .footer{max-width:1080px; margin:30px auto 0; padding:22px 36px 40px; color:var(--muted); font-size:12px; border-top:1px solid var(--line)}
+
+  /* 메인 */
+  .main{padding:30px 36px 48px; max-width:1080px; margin:0 auto}
+  .eyebrow{font-size:11px; letter-spacing:.08em; color:var(--muted); font-weight:600; margin:0 0 10px; text-transform:uppercase}
+
+  /* 히어로: 처음 보는 사람도 이해되게 */
+  .hero{margin-bottom:22px}
+  .hero h1{font-size:42px; margin:2px 0 12px; letter-spacing:-1.5px; line-height:1}
+  .hero p{margin:0; color:var(--ink-2); font-size:15px; line-height:1.6; max-width:680px}
+  .hero .lead{display:block; color:var(--ink); font-weight:700; font-size:16.5px; margin-bottom:7px}
+
+  /* ★ 입력 카드: 가장 눈에 띄게 (검정 강조 카드) */
+  .compose{background:var(--black); color:#fff; border-radius:16px; padding:20px; margin-bottom:14px; box-shadow:0 12px 30px rgba(0,0,0,.16)}
+  .compose .clabel{font-size:13px; font-weight:600; color:#e4e4e7; margin:0 0 9px; display:flex; align-items:center; gap:8px}
+  .compose .row{display:flex; gap:9px}
+  .compose input[type=url]{flex:1; border:1px solid #2a2a2e; background:#fff; border-radius:11px; padding:14px 15px; font-size:15px; color:#0a0a0a}
+  .compose input[type=url]::placeholder{color:#9a9aa2}
+  .compose input[type=url]:disabled{background:#1b1b1f; color:#8a8a92; border-color:#2a2a2e; cursor:not-allowed}
+  .compose .go{border:0; cursor:pointer; font-weight:700; font-size:14.5px; border-radius:11px; padding:0 22px; background:#fff; color:#0a0a0a; white-space:nowrap}
+  .compose .go:disabled{opacity:.45; cursor:default}
+  .compose .hint{font-size:12px; color:#a1a1aa; margin:10px 2px 0}
+
+  /* 옵션 — 기본 접힘, 추천 설정 안내 */
+  .optcard{margin-bottom:26px}
+  .optcard > summary{cursor:pointer; list-style:none; padding:13px 16px; font-size:13.5px; font-weight:600; color:var(--ink); display:flex; align-items:center; gap:8px}
+  .optcard > summary::-webkit-details-marker{display:none}
+  .optcard > summary .opt-state{color:var(--muted); font-weight:500; font-size:12.5px}
+  .optcard > summary .chev{margin-left:auto; color:var(--faint); transition:transform .2s}
+  .optcard[open] > summary .chev{transform:rotate(180deg)}
+  .optbody{padding:2px 16px 16px}
+  .optgrid{display:grid; grid-template-columns:1fr 1fr; gap:0 22px}
+  .opt{display:flex; gap:10px; padding:11px 0; border-top:1px solid var(--line)}
+  .opt .ctl{flex-shrink:0; padding-top:1px}
+  .opt input[type=checkbox]{accent-color:var(--black); width:16px; height:16px}
+  .opt .t{font-size:13.5px; font-weight:600; display:flex; align-items:center}
+  .opt .d{font-size:12px; color:var(--muted); margin-top:3px; line-height:1.45}
+  .tagrec{font-size:10px; font-weight:700; color:#15803d; background:#eafaef; border:1px solid #cdeed8; border-radius:5px; padding:1px 6px; margin-left:7px}
+  .tagopt{font-size:10px; font-weight:600; color:var(--muted); background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px; margin-left:7px}
+  /* 고급 설정 (한 번 더 숨김) + 쉬운 말 선택지 */
+  .adv{margin-top:8px; border-top:1px solid var(--line); padding-top:4px}
+  .adv > summary{cursor:pointer; list-style:none; font-size:13px; font-weight:600; color:var(--ink-2); display:flex; align-items:center; gap:6px; padding:9px 0}
+  .adv > summary::-webkit-details-marker{display:none}
+  .adv > summary .chev{color:var(--faint); transition:transform .2s}
+  .adv[open] > summary .chev{transform:rotate(180deg)}
+  .advrow{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:9px 0; border-top:1px solid var(--line)}
+  .advrow .t{font-size:13px; font-weight:600}
+  .advrow .d{font-size:12px; color:var(--muted); margin-top:2px}
+  .seg{display:inline-flex; border:1px solid var(--line-2); border-radius:8px; overflow:hidden; flex-shrink:0}
+  .seg button{border:0; background:var(--surface); padding:7px 12px; font-size:12.5px; color:var(--ink-2); cursor:pointer; border-right:1px solid var(--line-2)}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:var(--black); color:#fff}
+
+  /* 진행 상황 */
+  .section-h{display:flex; align-items:center; gap:9px; margin:0 2px 12px}
+  .section-h h2{font-size:14px; margin:0; letter-spacing:-.2px}
+  .section-h .badge{font-size:11px; font-weight:600; color:var(--run); background:#eff4ff; border:1px solid #dbe6ff; padding:3px 9px; border-radius:999px}
+  .progress-card{padding:18px; margin-bottom:26px}
+  .prow{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:11px}
+  .pstate{font-size:13.5px; font-weight:600; color:var(--ink-2)}
+  .ppct{font-size:30px; letter-spacing:-1px; line-height:1}
+  .ppct span{font-size:16px; color:var(--muted); margin-left:2px}
+  .pbar{height:8px; border-radius:999px; background:var(--hover); overflow:hidden}
+  .pbar > i{display:block; height:100%; width:62%; background:var(--ink)}
+  .pnow{margin:11px 2px 0; font-size:12px; color:var(--muted); font-family:ui-monospace,monospace}
+
+  /* 결과 / 다운로드 */
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r)}
+  .pad{padding:16px}
+  .dhead{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:15px 16px; flex-wrap:wrap}
+  .dhead h3{margin:0; font-size:16px; letter-spacing:-.3px}
+  .dhead .sub{color:var(--muted); font-size:12px; font-family:ui-monospace,monospace; margin-top:3px}
+  .btn{border:1px solid var(--black); cursor:pointer; font-weight:600; font-size:13px; border-radius:9px; padding:9px 15px; background:var(--black); color:#fff}
+  .btn.ghost{background:var(--surface); color:var(--ink); border:1px solid var(--line-2)}
+  .btn.sm{padding:7px 12px; font-size:12.5px}
+
+  /* 저장 폴더 선택 */
+  .save{display:flex; align-items:center; gap:8px; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:8px 8px 8px 12px; flex-wrap:wrap}
+  .save .lab{font-size:12px; color:var(--muted); font-weight:600}
+  .save .folder{font-size:12.5px; font-family:ui-monospace,monospace; color:var(--ink); background:#fff; border:1px solid var(--line-2); border-radius:7px; padding:6px 10px}
+
+  .stat{display:grid; grid-template-columns:repeat(4,1fr); margin:14px 0}
+  .stat > div{padding:13px 16px; border-right:1px solid var(--line)}
+  .stat > div:last-child{border-right:0}
+  .stat dt{font-size:11px; color:var(--muted); margin:0 0 4px}
+  .stat dd{margin:0; font-size:16px; font-weight:600; letter-spacing:-.3px}
+
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px}
+  .wire{border:1px solid var(--line); border-radius:9px; background:var(--surface-2); height:160px; display:grid; place-items:center; color:var(--faint); font-size:12.5px}
+
+  /* 레이아웃 프리뷰: 브레이크포인트 카드 + 와이어프레임(반응형 전환) */
+  .bps{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px}
+  .bp{text-align:left; border:1px solid var(--line); background:var(--surface); border-radius:10px; padding:12px 13px; cursor:pointer}
+  .bp:hover{background:var(--surface-2)}
+  .bp.on{border-color:var(--black); box-shadow:inset 0 0 0 1px var(--black)}
+  .bp .bp-t{font-size:13px; font-weight:700}
+  .bp .bp-w{font-size:18px; font-weight:700; letter-spacing:-.5px; margin-top:2px}
+  .bp .bp-m{font-size:11.5px; color:var(--muted); margin-top:3px; font-variant-numeric:tabular-nums}
+  .wfwrap{border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .wf-bar{display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--line); background:var(--surface-2)}
+  .wf-bar .dots{display:flex; gap:5px}
+  .wf-bar .dots i{width:9px; height:9px; border-radius:50%; background:var(--line-2)}
+  .wf-bar .wf-title{font-size:12px; color:var(--muted)}
+  .wf{padding:16px; background:#fff}
+  .wf-canvas{margin:0 auto; transition:max-width .25s ease; display:flex; flex-direction:column; gap:8px}
+  .wf-box{border:1px solid #c9c9cf; border-radius:6px; background:#f3f3f5; padding:9px; font:600 10.5px ui-monospace,monospace; color:#6b7280}
+  .wf-row{display:grid; gap:8px}
+  .wf-grid{display:grid; gap:6px; margin-top:7px}
+  .wf-cell{border:1px dashed #c4c4cc; border-radius:5px; background:#fff; padding:16px 8px; font:600 10px ui-monospace,monospace; color:#a1a1aa; text-align:center}
+  .wf-canvas[data-bp="desktop"]{max-width:100%}
+  .wf-canvas[data-bp="desktop"] .wf-row{grid-template-columns:190px 1fr}
+  .wf-canvas[data-bp="desktop"] .wf-grid{grid-template-columns:repeat(3,1fr)}
+  .wf-canvas[data-bp="tablet"]{max-width:520px}
+  .wf-canvas[data-bp="tablet"] .wf-row{grid-template-columns:1fr}
+  .wf-canvas[data-bp="tablet"] .wf-grid{grid-template-columns:repeat(2,1fr)}
+  .wf-canvas[data-bp="mobile"]{max-width:300px}
+  .wf-canvas[data-bp="mobile"] .wf-row{grid-template-columns:1fr}
+  .wf-canvas[data-bp="mobile"] .wf-grid{grid-template-columns:1fr}
+
+  /* preview.html 미리보기 (추출된 색·타이포·컴포넌트) */
+  .prev{padding:16px 16px 18px; background:#fff}
+  .pv-sec{margin-bottom:15px}
+  .pv-sec:last-child{margin-bottom:0}
+  .pv-h{font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:700; margin:0 0 9px}
+  .pv-sw{display:flex; gap:8px; flex-wrap:wrap}
+  .pv-sw .s i{display:block; width:62px; height:40px; border-radius:8px; border:1px solid rgba(0,0,0,.07)}
+  .pv-sw .s span{display:block; font:600 10px ui-monospace,monospace; color:var(--muted); margin-top:5px}
+  .pv-type{display:flex; align-items:baseline; gap:16px}
+  .pv-type .ag{font-size:42px; font-weight:800; letter-spacing:-1.5px; line-height:1}
+  .pv-scale div{line-height:1.5}
+  .pv-comp{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .pv-btn{border-radius:9px; padding:9px 16px; font-size:13px; font-weight:600; border:0; cursor:pointer}
+  .pv-btn.primary{background:#635bff; color:#fff}
+  .pv-btn.ghost{background:#fff; color:#0a0a0a; border:1px solid var(--line-2)}
+  .pv-input{border:1px solid var(--line-2); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--muted); min-width:160px}
+  .pv-badge{background:#eef0ff; color:#635bff; font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px}
+
+  /* 다운로드 파일 리스트 (자세히) */
+  .dl-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px}
+  .chips{display:flex; gap:6px; flex-wrap:wrap}
+  .chip{font-size:12px; padding:5px 10px; border-radius:7px; border:1px solid var(--line-2); color:var(--ink-2); cursor:pointer; background:var(--surface)}
+  .chip.on{background:var(--black); color:#fff; border-color:var(--black)}
+  .files{display:flex; flex-direction:column; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .file{display:flex; align-items:center; gap:12px; padding:11px 13px; border-bottom:1px solid var(--line); background:var(--surface)}
+  .file:last-child{border-bottom:0}
+  .file:hover{background:var(--surface-2)}
+  .file input[type=checkbox]{accent-color:var(--black); width:15px; height:15px}
+  .file .ico{width:30px; height:30px; border-radius:7px; background:var(--surface-2); border:1px solid var(--line); color:var(--ink-2); display:grid; place-items:center; font-size:10px; font-weight:700}
+  .file .n{font-size:13px; font-weight:600}
+  .file .meta{font-size:11.5px; color:var(--muted); margin-top:2px}
+  .file .cat{font-size:10.5px; color:var(--muted); border:1px solid var(--line-2); border-radius:5px; padding:2px 7px}
+  .file .size{font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .file .got{font-size:11px; color:var(--ok); font-weight:600; display:inline-flex; align-items:center; gap:4px}
+  .spacer{flex:1}
+
+  /* 작업 이력 (맨 아래) */
+  .history{margin-top:30px; border-top:1px solid var(--line); padding-top:22px}
+  .joblist{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+  .job{display:block; text-align:left; border:1px solid var(--line); background:var(--surface); border-radius:10px; padding:11px 12px; cursor:pointer}
+  .job:hover{background:var(--surface-2)}
+  .job.sel{border-color:var(--black)}
+  .job .h{display:flex; justify-content:space-between; align-items:center; gap:8px}
+  .job .host{font-weight:600; font-size:13.5px}
+  .job .url{color:var(--muted); font-size:11.5px; margin:3px 0 7px; font-family:ui-monospace,monospace}
+  .job .m{color:var(--muted); font-size:11.5px}
+  .tag{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:3px 8px; border-radius:6px; background:var(--surface-2); border:1px solid var(--line); color:var(--ink-2)}
+  .tag .d{width:6px; height:6px; border-radius:50%}
+  @media(max-width:980px){ body{grid-template-columns:1fr} .side{display:none} .optgrid,.two,.joblist{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">P</span><b>Peel</b><span class="ver">studio</span></div>
+    <div class="right">
+      <span class="pill"><span class="dot"></span> Online</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- 히어로: 처음 보는 사람도 한눈에 -->
+    <div class="hero">
+      <p class="eyebrow">디자인 시스템 추출 스튜디오</p>
+      <h1>Peel</h1>
+      <p>
+        <span class="lead">원하는 웹사이트를 넣으면, 디자인 시스템으로 정리해 드려요.</span>
+        주소 하나만 붙여넣으면 실제 화면을 열어 색·폰트·간격·컴포넌트·반응형 레이아웃까지
+        분석해 토큰·문서·CSS 파일로 정리합니다. 개발자에게 그대로 넘기거나, AI에 붙여 같은 화면을 재현할 때 쓰세요.
+      </p>
+    </div>
+
+    <!-- ★ 입력 카드 (가장 눈에 띄게) -->
+    <section class="compose">
+      <p class="clabel">🔗 분석할 웹사이트 주소</p>
+      <div class="row">
+        <input type="url" placeholder="여기에 링크를 붙여넣으세요  ·  예: https://stripe.com">
+        <button class="go">추출 실행</button>
+      </div>
+      <p class="hint">버튼을 누르면 곧바로 추출이 시작되고, 아래 ‘진행 상황’에서 실시간으로 확인할 수 있어요.</p>
+    </section>
+
+    <!-- 옵션 + 설명 -->
+    <details class="card optcard">
+      <summary>옵션 <span class="opt-state">· 추천 설정으로 진행돼요 (다크모드·스크린샷 켜짐) — 바꾸려면 펼치기</span> <span class="chev">▾</span></summary>
+      <div class="optbody">
+        <div class="optgrid">
+          <div class="opt">
+            <span class="ctl"><input type="checkbox" checked></span>
+            <div><div class="t">다크 모드 <span class="tagrec">추천</span></div><div class="d">사이트의 다크 테마 화면도 함께 추출합니다.</div></div>
+          </div>
+          <div class="opt">
+            <span class="ctl"><input type="checkbox" checked></span>
+            <div><div class="t">컴포넌트 스크린샷 <span class="tagrec">추천</span></div><div class="d">버튼·카드 같은 주요 컴포넌트를 이미지로 캡처합니다.</div></div>
+          </div>
+          <div class="opt">
+            <span class="ctl"><input type="checkbox"></span>
+            <div><div class="t">반응형 레이아웃 <span class="tagopt">선택 · 느려요</span></div><div class="d">데스크톱·태블릿·모바일 화면을 열어 grid/flex 구조를 뽑습니다.</div></div>
+          </div>
+        </div>
+
+        <details class="adv">
+          <summary>고급 설정 <span class="chev">▾</span></summary>
+          <div class="advrow">
+            <div><div class="t">분석 범위</div><div class="d">시작 페이지에서 링크를 얼마나 따라가며 분석할지</div></div>
+            <div class="seg"><button class="on">이 페이지만</button><button>한 단계 더</button><button>깊게 · 느림</button></div>
+          </div>
+          <div class="advrow">
+            <div><div class="t">로딩 대기</div><div class="d">자바스크립트로 그려지는 사이트를 기다리는 시간</div></div>
+            <div class="seg"><button>빠름</button><button class="on">보통</button><button>느린 사이트</button></div>
+          </div>
+        </details>
+      </div>
+    </details>
+
+    <!-- 진행 상황 (추출 실행 직후 바로 여기서 확인) — 퍼센트 위주 -->
+    <div id="progress-section">
+    <div class="section-h"><h2>진행 상황</h2><span class="badge">● 추출 중</span></div>
+    <section class="card progress-card">
+      <div class="prow">
+        <span class="pstate">추출 중…</span>
+        <strong class="ppct">62<span>%</span></strong>
+      </div>
+      <div class="pbar"><i></i></div>
+      <p class="pnow">지금: 컴포넌트 스크린샷 캡처 중 (12)</p>
+    </section>
+    </div><!-- /progress-section -->
+
+    <!-- 결과 / 다운로드 -->
+    <div id="result-section">
+    <div class="section-h"><h2>결과 · 다운로드</h2></div>
+    <section class="card">
+      <div class="dhead">
+        <div>
+          <h3 id="res-host">stripe.com</h3>
+          <div class="sub" id="res-sub">job mb1k2c · https://stripe.com · 06.14 01:56</div>
+        </div>
+        <div class="save">
+          <span class="lab">저장 위치</span>
+          <span class="folder">📁 ~/Downloads/design-extract</span>
+          <button class="btn ghost sm">폴더 선택</button>
+          <button class="btn sm">이 폴더에 저장</button>
+        </div>
+      </div>
+
+      <div style="padding:0 16px">
+        <dl class="stat" style="border:1px solid var(--line); border-radius:10px">
+          <div><dt>상태</dt><dd style="display:flex;align-items:center;gap:6px"><span class="dot"></span>완료</dd></div>
+          <div><dt>파일</dt><dd>42</dd></div>
+          <div><dt>소요</dt><dd>1m 12s</dd></div>
+          <div><dt>WCAG</dt><dd>AA · 96</dd></div>
+        </dl>
+      </div>
+
+      <div class="pad">
+        <section style="margin-bottom:18px">
+          <p class="eyebrow" style="margin-bottom:8px">반응형 레이아웃 — 추출된 화면 구조 (브레이크포인트 선택)</p>
+          <div class="bps" id="bps">
+            <button class="bp" data-bp="mobile"><div class="bp-t">Mobile</div><div class="bp-w">390px</div><div class="bp-m">51 nodes · 8375px</div></button>
+            <button class="bp" data-bp="tablet"><div class="bp-t">Tablet</div><div class="bp-w">834px</div><div class="bp-m">51 nodes · 8349px</div></button>
+            <button class="bp on" data-bp="desktop"><div class="bp-t">Desktop</div><div class="bp-w">1440px</div><div class="bp-m">51 nodes · 5918px</div></button>
+          </div>
+          <div class="wfwrap">
+            <div class="wf-bar"><span class="dots"><i></i><i></i><i></i></span><span class="wf-title" id="wf-title">Desktop wireframe · 1440px</span></div>
+            <div class="wf">
+              <div class="wf-canvas" id="wf-canvas" data-bp="desktop">
+                <div class="wf-box">header · nav</div>
+                <div class="wf-row">
+                  <div class="wf-box">aside .sidebar</div>
+                  <div class="wf-box">main · grid 3col
+                    <div class="wf-grid">
+                      <div class="wf-cell">card</div><div class="wf-cell">card</div><div class="wf-cell">card</div>
+                      <div class="wf-cell">card</div><div class="wf-cell">card</div><div class="wf-cell">card</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="wf-box">footer</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style="margin-bottom:18px">
+          <p class="eyebrow" style="margin-bottom:8px">미리보기 — preview.html</p>
+          <div class="wfwrap">
+            <div class="wf-bar"><span class="dots"><i></i><i></i><i></i></span><span class="wf-title">stripe.com · 추출 결과 미리보기</span></div>
+            <div class="prev">
+              <div class="pv-sec">
+                <p class="pv-h">Colors</p>
+                <div class="pv-sw">
+                  <div class="s"><i style="background:#635bff"></i><span>#635BFF</span></div>
+                  <div class="s"><i style="background:#0a2540"></i><span>#0A2540</span></div>
+                  <div class="s"><i style="background:#00d4ff"></i><span>#00D4FF</span></div>
+                  <div class="s"><i style="background:#1a1f36"></i><span>#1A1F36</span></div>
+                  <div class="s"><i style="background:#f6f9fc"></i><span>#F6F9FC</span></div>
+                  <div class="s"><i style="background:#425466"></i><span>#425466</span></div>
+                </div>
+              </div>
+              <div class="pv-sec">
+                <p class="pv-h">Typography</p>
+                <div class="pv-type">
+                  <span class="ag">Ag</span>
+                  <div class="pv-scale">
+                    <div style="font-size:20px; font-weight:700">Display · 큰 제목</div>
+                    <div style="font-size:14px">Body — 본문 텍스트 예시입니다.</div>
+                    <div style="font-size:12px; color:var(--muted)">Caption · 12px · Pretendard</div>
+                  </div>
+                </div>
+              </div>
+              <div class="pv-sec">
+                <p class="pv-h">Components</p>
+                <div class="pv-comp">
+                  <button class="pv-btn primary">Primary</button>
+                  <button class="pv-btn ghost">Secondary</button>
+                  <span class="pv-input">input@example.com</span>
+                  <span class="pv-badge">Badge</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="dl-head">
+          <div class="chips" id="dlchips">
+            <span class="chip on" data-cat="all">전체 42</span>
+            <span class="chip" data-cat="doc">핵심 문서</span>
+            <span class="chip" data-cat="token">색·토큰</span>
+            <span class="chip" data-cat="layout">레이아웃</span>
+            <span class="chip" data-cat="motion">모션</span>
+            <span class="chip" data-cat="comp">컴포넌트</span>
+            <span class="chip" data-cat="img">이미지</span>
+            <span class="chip" data-cat="ai">AI·기타</span>
+          </div>
+          <div style="display:flex; gap:8px">
+            <button class="btn sm" id="dl-all">전부 다운로드 (42)</button>
+            <button class="btn ghost sm" id="dl-selected">선택 항목만 받기</button>
+          </div>
+        </div>
+
+        <div class="files" id="dlfiles">
+          <div class="file" data-cat="doc">
+            <input type="checkbox" checked>
+            <span class="ico">MD</span>
+            <div><div class="n">design-language.md</div><div class="meta">핵심 디자인 보고서 — 색·타이포·간격 요약</div></div>
+            <div class="spacer"></div><span class="size">9.7 KB</span><span class="got">✓ 받음</span>
+          </div>
+          <div class="file" data-cat="doc">
+            <input type="checkbox" checked>
+            <span class="ico">HTML</span>
+            <div><div class="n">preview.html</div><div class="meta">시각 미리보기 — 브라우저로 빠르게 확인</div></div>
+            <div class="spacer"></div><span class="size">22 KB</span><span class="got">✓ 받음</span>
+          </div>
+          <div class="file" data-cat="token">
+            <input type="checkbox">
+            <span class="ico">CSS</span>
+            <div><div class="n">variables.css</div><div class="meta">CSS 변수 토큰 — 색·폰트·간격을 코드로</div></div>
+            <div class="spacer"></div><span class="size">3.1 KB</span>
+          </div>
+          <div class="file" data-cat="token">
+            <input type="checkbox">
+            <span class="ico">JSON</span>
+            <div><div class="n">design-tokens.json</div><div class="meta">디자인 토큰 원본 데이터</div></div>
+            <div class="spacer"></div><span class="size">5.6 KB</span>
+          </div>
+          <div class="file" data-cat="layout">
+            <input type="checkbox">
+            <span class="ico">SVG</span>
+            <div><div class="n">wireframe.svg</div><div class="meta">레이아웃 와이어프레임 — 구조 한눈에</div></div>
+            <div class="spacer"></div><span class="size">12 KB</span>
+          </div>
+          <div class="file" data-cat="layout">
+            <input type="checkbox">
+            <span class="ico">CSS</span>
+            <div><div class="n">layout.css</div><div class="meta">반응형 grid/flex + 브레이크포인트별 규칙</div></div>
+            <div class="spacer"></div><span class="size">4.4 KB</span>
+          </div>
+          <div class="file" data-cat="layout">
+            <input type="checkbox">
+            <span class="ico">HTML</span>
+            <div><div class="n">layout-skeleton.html</div><div class="meta">레이아웃을 재현하는 시맨틱 HTML</div></div>
+            <div class="spacer"></div><span class="size">8.0 KB</span>
+          </div>
+          <div class="file" data-cat="layout">
+            <input type="checkbox">
+            <span class="ico">JSON</span>
+            <div><div class="n">layout.json</div><div class="meta">브레이크포인트별 레이아웃 트리 원본</div></div>
+            <div class="spacer"></div><span class="size">31 KB</span>
+          </div>
+          <div class="file" data-cat="motion">
+            <input type="checkbox">
+            <span class="ico">CSS</span>
+            <div><div class="n">motion.css</div><div class="meta">모션 — transition·keyframes</div></div>
+            <div class="spacer"></div><span class="size">2.7 KB</span>
+          </div>
+          <div class="file" data-cat="motion">
+            <input type="checkbox">
+            <span class="ico">JSON</span>
+            <div><div class="n">motion-tokens.json</div><div class="meta">duration·easing 모션 토큰</div></div>
+            <div class="spacer"></div><span class="size">1.3 KB</span>
+          </div>
+          <div class="file" data-cat="motion">
+            <input type="checkbox">
+            <span class="ico">JS</span>
+            <div><div class="n">motion.framer.js</div><div class="meta">Framer Motion용 코드 (gsap·waapi 등도 함께)</div></div>
+            <div class="spacer"></div><span class="size">3.4 KB</span>
+          </div>
+          <div class="file" data-cat="comp">
+            <input type="checkbox">
+            <span class="ico">TSX</span>
+            <div><div class="n">anatomy.tsx</div><div class="meta">React 컴포넌트 구조·variant 계약</div></div>
+            <div class="spacer"></div><span class="size">732 B</span>
+          </div>
+          <div class="file" data-cat="img">
+            <input type="checkbox">
+            <span class="ico">PNG</span>
+            <div><div class="n">screenshots/button.png</div><div class="meta">컴포넌트 스크린샷 — 실제 렌더 이미지</div></div>
+            <div class="spacer"></div><span class="size">48 KB</span>
+          </div>
+          <div class="file" data-cat="ai">
+            <input type="checkbox">
+            <span class="ico">JSON</span>
+            <div><div class="n">figma-variables.json</div><div class="meta">Figma 변수 — 디자인 툴로 가져오기</div></div>
+            <div class="spacer"></div><span class="size">2.0 KB</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    </div><!-- /result-section -->
+
+    <!-- 작업 이력 (맨 아래) -->
+    <div class="history">
+      <div class="section-h"><h2>작업 이력</h2><span style="color:var(--faint);font-size:12px">최근 3개</span></div>
+      <div class="joblist" id="historylist">
+        <button class="job sel" data-status="done" data-id="mb1k2c" data-host="stripe.com" data-url="https://stripe.com" data-date="06.14 01:56" data-files="42">
+          <div class="h"><span class="host">stripe.com</span><span class="tag"><span class="d" style="background:var(--ok)"></span>완료</span></div>
+          <div class="url">https://stripe.com</div>
+          <div class="m">06.14 01:56 · 42 files · 클릭해 다시 보기·다운로드</div>
+        </button>
+        <button class="job" data-status="running" data-id="n0p9zz" data-host="designlang.app" data-url="https://designlang.app" data-date="방금" data-files="—">
+          <div class="h"><span class="host">designlang.app</span><span class="tag"><span class="d" style="background:var(--run)"></span>진행 중</span></div>
+          <div class="url">https://designlang.app</div>
+          <div class="m">방금 · 추출 중</div>
+        </button>
+        <button class="job" data-status="done" data-id="k3l4mn" data-host="vercel.com" data-url="https://vercel.com" data-date="어제 09:12" data-files="41">
+          <div class="h"><span class="host">vercel.com</span><span class="tag"><span class="d" style="background:var(--ok)"></span>완료</span></div>
+          <div class="url">https://vercel.com</div>
+          <div class="m">어제 · 41 files · 클릭해 다시 보기·다운로드</div>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">localhost 전용 · 작업과 로그는 이 기기에만 남습니다.</footer>
+
+  <script>
+    // 목업 클릭 동작 (실제 기능은 앱 구현 시 연결) — 칩/세그먼트/네비/필터/피드백
+    const pickOne = (group, el) => {
+      group.querySelectorAll(".on").forEach((n) => n.classList.remove("on"));
+      el.classList.add("on");
+    };
+    document.querySelectorAll(".seg").forEach((seg) =>
+      seg.querySelectorAll("button").forEach((b) =>
+        b.addEventListener("click", () => pickOne(seg, b)),
+      ),
+    );
+    const chips = document.getElementById("dlchips");
+    const files = document.getElementById("dlfiles");
+    if (chips) chips.querySelectorAll(".chip").forEach((c) =>
+      c.addEventListener("click", () => {
+        pickOne(chips, c);
+        const t = c.dataset.cat;
+        files.querySelectorAll(".file").forEach((f) => {
+          f.style.display = t === "all" || f.dataset.cat === t ? "" : "none";
+        });
+      }),
+    );
+    // 레이아웃: 브레이크포인트 카드 클릭 → 와이어프레임이 그 화면폭 구조로 전환
+    const bps = document.getElementById("bps");
+    const wfCanvas = document.getElementById("wf-canvas");
+    const wfTitle = document.getElementById("wf-title");
+    const WF_LABEL = { mobile: "Mobile wireframe · 390px", tablet: "Tablet wireframe · 834px", desktop: "Desktop wireframe · 1440px" };
+    if (bps) bps.querySelectorAll(".bp").forEach((b) =>
+      b.addEventListener("click", () => {
+        pickOne(bps, b);
+        wfCanvas.dataset.bp = b.dataset.bp;
+        wfTitle.textContent = WF_LABEL[b.dataset.bp];
+      }),
+    );
+
+    // 다운로드 버튼: 전부 다운로드 = 체크박스 전체 선택 후 받기 / 선택 항목만 받기
+    const fileChecks = () => files.querySelectorAll('input[type="checkbox"]');
+    const dlAll = document.getElementById("dl-all");
+    const dlSel = document.getElementById("dl-selected");
+    if (dlAll) dlAll.addEventListener("click", () => {
+      fileChecks().forEach((c) => { c.checked = true; });
+      alert("전체 파일을 다운로드합니다 → ~/Downloads/design-extract");
+    });
+    if (dlSel) dlSel.addEventListener("click", () => {
+      const n = [...fileChecks()].filter((c) => c.checked).length;
+      if (!n) { alert("받을 파일을 먼저 체크하세요."); return; }
+      alert(n + "개 선택 파일을 다운로드합니다 → ~/Downloads/design-extract");
+    });
+
+    // ── 추출 상태 흐름: 대기(idle) → 추출중(running) → 완료(done) ──────
+    const urlIn = document.querySelector(".compose input");
+    const go = document.querySelector(".compose .go");
+    const progSec = document.getElementById("progress-section");
+    const resSec = document.getElementById("result-section");
+    const bar = document.querySelector(".pbar > i");
+    const pct = document.querySelector(".ppct");
+    const pstate = document.querySelector(".pstate");
+    const pnow = document.querySelector(".pnow");
+    const badge = document.querySelector("#progress-section .badge");
+    const SAMPLE = "https://stripe.com";
+    let timer = null;
+
+    const show = (el, on) => { el.style.display = on ? "" : "none"; };
+    function setProgress(p, done) {
+      bar.style.width = p + "%";
+      pct.innerHTML = p + "<span>%</span>";
+      pstate.textContent = done ? "완료" : "추출 중…";
+      badge.textContent = done ? "● 완료" : "● 추출 중";
+      pnow.textContent = done
+        ? "모든 파일 생성 완료 — 아래에서 다운로드하세요."
+        : "지금: 컴포넌트 스크린샷 캡처 중 (12)";
+    }
+    function setState(s, p) {
+      clearInterval(timer);
+      if (s === "idle") {
+        urlIn.disabled = false; urlIn.value = "";
+        go.textContent = "추출 실행"; go.disabled = false; go.dataset.act = "run";
+        show(progSec, false); show(resSec, false);
+      } else if (s === "running") {
+        urlIn.disabled = true; if (!urlIn.value) urlIn.value = SAMPLE;
+        go.textContent = "추출 중…"; go.disabled = true; go.dataset.act = "";
+        show(progSec, true); show(resSec, false); setProgress(p ?? 62, false);
+      } else if (s === "done") {
+        urlIn.disabled = true; if (!urlIn.value) urlIn.value = SAMPLE;
+        go.textContent = "＋ 새 웹사이트 추출"; go.disabled = false; go.dataset.act = "new";
+        show(progSec, true); show(resSec, true); setProgress(100, true);
+      }
+    }
+    function runDemo() {
+      setState("running", 0);
+      let p = 0;
+      timer = setInterval(() => {
+        p += Math.max(3, Math.round((100 - p) * 0.09));
+        if (p >= 100) { clearInterval(timer); setState("done"); return; }
+        setProgress(p, false);
+      }, 180);
+    }
+    go.addEventListener("click", () => {
+      if (go.dataset.act === "run") {
+        if (!urlIn.value.trim()) { alert("먼저 분석할 웹사이트 주소를 입력하세요."); return; }
+        alert("추출을 실행합니다:\n" + urlIn.value);
+        runDemo();
+      } else if (go.dataset.act === "new") {
+        setState("idle"); urlIn.focus();
+      }
+    });
+
+    // 작업 이력 클릭 → 그 작업의 결과를 다시 열어 다운로드 (진행상황은 숨김)
+    const resHost = document.getElementById("res-host");
+    const resSub = document.getElementById("res-sub");
+    const historyList = document.getElementById("historylist");
+    function viewJob(card) {
+      clearInterval(timer);
+      show(progSec, false);
+      show(resSec, true);
+      resHost.textContent = card.dataset.host;
+      resSub.textContent = "job " + card.dataset.id + " · " + card.dataset.url + " · " + card.dataset.date;
+      resSec.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    if (historyList) historyList.querySelectorAll(".job").forEach((card) =>
+      card.addEventListener("click", () => {
+        if (card.dataset.status === "running") {
+          alert("아직 추출 중입니다. 완료되면 결과를 열어 다운로드할 수 있어요.");
+          return;
+        }
+        pickOne(historyList, card);
+        viewJob(card);
+      }),
+    );
+
+    // 초기 상태: URL 해시로 지정 가능(#idle/#running/#done). 기본은 대기(샘플 주소 채움).
+    const init = location.hash.slice(1) || "idle";
+    setState(init);
+    if (init === "idle") urlIn.value = SAMPLE;
+  </script>
+</body>
+</html>
