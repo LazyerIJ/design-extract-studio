@@ -11,7 +11,7 @@ import {
 test("validateJobInput applies safe defaults and normalizes the URL", () => {
   assert.deepEqual(validateJobInput({ url: "https://example.com/path" }), {
     url: "https://example.com/path",
-    options: { dark: true, screenshots: true, depth: 1, wait: 1500, layout: true },
+    options: { dark: true, screenshots: true, depth: 1, wait: 1500, layout: false },
   });
 });
 
@@ -24,8 +24,12 @@ test("validateJobInput accepts bounded extraction options", () => {
   assert.equal(value.options.wait, 30000);
 });
 
-test("validateJobInput controls the layout option", () => {
-  assert.equal(validateJobInput({ url: "https://example.com" }).options.layout, true);
+test("validateJobInput controls the layout option (opt-in: default false)", () => {
+  assert.equal(validateJobInput({ url: "https://example.com" }).options.layout, false);
+  assert.equal(
+    validateJobInput({ url: "https://example.com", options: { layout: true } }).options.layout,
+    true,
+  );
   assert.equal(
     validateJobInput({ url: "https://example.com", options: { layout: false } }).options.layout,
     false,

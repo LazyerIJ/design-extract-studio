@@ -210,3 +210,51 @@ test("classifyArtifact routes layout files before the image rule", () => {
   // a normal screenshot still classifies as image
   assert.equal(classifyArtifact("screenshots/nav.png").type, "이미지");
 });
+
+test("repeated siblings with one conditionally removed are ambiguous → not mismatched", () => {
+  // Desktop: two identical section.card. Mobile: the FIRST is removed. A
+  // positional/nth signature would let the survivor collide with desktop's
+  // first card; pure-ancestry signatures make both cards share one signature →
+  // ambiguous → skipped, never given the wrong responsive rule.
+  const card = (flexDir, x) => ({
+    tag: "section", dom: "main>section.card", cls: ["card"],
+    flex: { direction: flexDir, gap: "8px" }, rect: { x, y: 0, w: 700, h: 400 }, children: [],
+  });
+  const capture = {
+    generatedAt: "2026-06-15T00:00:00.000Z",
+    url: "https://example.com/",
+    breakpoints: {
+      desktop: { width: 1440, height: 900, scrollHeight: 1000, tree: {
+        tag: "main", dom: "main", grid: { columns: 2, template: "1fr 1fr", gap: "16px" },
+        rect: { x: 0, y: 0, w: 1440, h: 1000 }, children: [card("row", 0), card("row", 720)],
+      } },
+      mobile: { width: 390, height: 844, scrollHeight: 1400, tree: {
+        tag: "main", dom: "main", grid: { columns: 1, template: "1fr", gap: "12px" },
+        rect: { x: 0, y: 0, w: 390, h: 1400 }, children: [card("column", 0)], // first removed
+      } },
+    },
+  };
+  const css = generateLayoutArtifacts(capture, "site")["site-layout.css"];
+  const mobileBlock = css.slice(css.indexOf("@media (max-width: 390px)"));
+  // Neither card class may inherit the survivor's column rule (the bug).
+  assert.doesNotMatch(mobileBlock, /\.lyt-0-0 \{[^}]*flex-direction: column/);
+  assert.doesNotMatch(mobileBlock, /\.lyt-0-1 \{[^}]*flex-direction: column/);
+  // Ambiguous cards are reported, and the unique parent still gets its override.
+  assert.match(css, /limitations:/);
+  assert.match(mobileBlock, /\.lyt-0 \{[^}]*grid-template-columns: 1fr/);
+});
+
+test("a hostile URL cannot break out of the CSS comment", () => {
+  const capture = {
+    generatedAt: "2026-06-15T00:00:00.000Z",
+    url: "https://evil.example/*/}body{display:none}/*",
+    breakpoints: { desktop: { width: 1440, height: 900, scrollHeight: 1000, tree: {
+      tag: "main", dom: "main", grid: { columns: 1, template: "1fr" },
+      rect: { x: 0, y: 0, w: 1440, h: 1000 }, children: [],
+    } } },
+  };
+  const css = generateLayoutArtifacts(capture, "evil")["evil-layout.css"];
+  // The "*/" inside the URL must be neutralised so it can't terminate the
+  // comment and inject a real rule.
+  assert.doesNotMatch(css, /\*\/\}body\{display:none\}/);
+});

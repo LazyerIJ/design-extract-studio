@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runLayoutExtraction } from "../lib/layout-step.mjs";
 
-const JOB = { url: "https://example.com/", options: {} };
+// Opt-in: layout runs only when options.layout === true.
+const JOB = { url: "https://example.com/", options: { layout: true } };
 
 async function artifactDir(t) {
   const dir = await mkdtemp(join(tmpdir(), "layout-step-"));
