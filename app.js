@@ -18,6 +18,7 @@
     jobs: [],
     current: null,
     artifacts: [],
+    layoutData: null,
     es: null,
     saveDir: null,
     filter: "all",
@@ -153,7 +154,9 @@
     dd("#stat-wcag", s?.wcagScore != null ? `${s.wcagScore}%${s.grade ? " · " + s.grade : ""}` : (s?.grade || "—"));
   }
 
-  function renderLayout(job) {
+  const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
+  async function renderLayout(job) {
     const block = $("#layout-block");
     const layout = job.layout;
     if (!layout || layout.status !== "succeeded" || !layout.breakpoints?.length) {
@@ -161,40 +164,83 @@
       return;
     }
     block.hidden = false;
-    const cards = $("#bp-cards");
-    cards.innerHTML = "";
+
+    // Load the full per-breakpoint trees (layout.json) so we can draw a clean
+    // nested wireframe and re-draw it (real reflow) when a breakpoint is picked.
+    state.layoutData = null;
+    const jsonArt = state.artifacts.find((a) => a.name.endsWith("-layout.json") || a.name === "layout.json");
+    if (jsonArt) {
+      try {
+        const res = await fetch(artifactUrl(job.id, jsonArt.path), { cache: "no-store" });
+        if (res.ok) state.layoutData = await res.json();
+      } catch { /* fall back to empty */ }
+    }
+
     const order = { mobile: 0, tablet: 1, desktop: 2 };
     const bps = [...layout.breakpoints].sort((a, b) => (order[a.name] ?? 9) - (order[b.name] ?? 9));
+    const active = bps.find((b) => b.name === "desktop") || bps[bps.length - 1];
+    const cards = $("#bp-cards");
+    cards.innerHTML = "";
     for (const bp of bps) {
       const card = el("button", "bp");
       card.type = "button";
       card.dataset.name = bp.name;
       card.append(
-        el("div", "bp-t", bp.name[0].toUpperCase() + bp.name.slice(1)),
+        el("div", "bp-t", cap(bp.name)),
         el("div", "bp-w", `${bp.width}px`),
         el("div", "bp-m", `${bp.nodes ?? "?"} nodes · ${bp.scrollHeight ?? "?"}px`),
       );
-      if (bp.name === "desktop") card.classList.add("on");
+      if (bp.name === active?.name) card.classList.add("on");
       card.addEventListener("click", () => {
         cards.querySelectorAll(".bp").forEach((c) => c.classList.remove("on"));
         card.classList.add("on");
-        $("#wf-title").textContent = `${card.querySelector(".bp-t").textContent} 와이어프레임 · ${bp.width}px`;
+        renderWireframe(bp);
       });
       cards.append(card);
     }
-    // 실제 생성된 wireframe.svg(데스크톱)를 이미지로 표시
-    const wire = state.artifacts.find((a) => a.name.endsWith("-wireframe.svg") || a.name === "wireframe.svg");
+    if (active) renderWireframe(active);
+  }
+
+  // ── 와이어프레임: layout.json 트리를 중첩 박스로 그림 ────────────────────
+  function layoutKind(node) {
+    if (node.grid) return `grid ${node.grid.columns || 1}col`;
+    if (node.flex) return `flex ${String(node.flex.direction || "row").startsWith("col") ? "col" : "row"}`;
+    return "block";
+  }
+  function wfLabel(node) {
+    const ident = node.cls?.length ? `.${node.cls[0]}` : node.id ? `#${node.id}` : "";
+    return `${node.tag}${ident ? " " + ident : ""} · ${layoutKind(node)}`;
+  }
+  function wfNode(node) {
+    const kids = node.children ?? [];
+    const box = el("div", `wf-node${kids.length ? "" : " leaf"}`);
+    box.append(el("div", "wf-label", wfLabel(node)));
+    if (kids.length) {
+      const inner = el("div", "wf-kids");
+      if (node.grid) {
+        inner.style.display = "grid";
+        inner.style.gridTemplateColumns = `repeat(${Math.min(node.grid.columns || 1, kids.length, 6)}, minmax(0, 1fr))`;
+      } else if (node.flex && String(node.flex.direction || "row").startsWith("row")) {
+        inner.style.flexDirection = "row";
+      }
+      kids.forEach((k) => inner.append(wfNode(k)));
+      box.append(inner);
+    }
+    return box;
+  }
+  function renderWireframe(bp) {
+    $("#wf-title").textContent = `${cap(bp.name)} 와이어프레임 · ${bp.width}px`;
     const host = $("#wireframe-host");
     host.innerHTML = "";
-    if (wire) {
-      const img = el("img");
-      img.src = artifactUrl(job.id, wire.path);
-      img.alt = "레이아웃 와이어프레임";
-      host.append(img);
-      $("#wf-title").textContent = "Desktop 와이어프레임";
-    } else {
-      host.append(el("p", "wf-empty", "와이어프레임 파일을 찾지 못했습니다."));
+    const tree = state.layoutData?.breakpoints?.[bp.name]?.tree;
+    if (!tree) {
+      host.append(el("p", "wf-empty", "와이어프레임 데이터를 불러오지 못했습니다."));
+      return;
     }
+    const canvas = el("div", "wf-canvas");
+    canvas.style.maxWidth = bp.name === "mobile" ? "320px" : bp.name === "tablet" ? "600px" : "100%";
+    canvas.append(wfNode(tree));
+    host.append(canvas);
   }
 
   function renderPreview(job) {
